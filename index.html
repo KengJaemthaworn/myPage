@@ -8,7 +8,7 @@
     <!-- Tailwind CSS for clean, readable styling (Dyslexia-friendly spacing) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Marked.js for rendering Markdown (Makes editing text much easier) -->
+    <!-- Marked.js for rendering Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <!-- Highlight.js for R code highlighting -->
@@ -23,157 +23,54 @@
         .markdown-content h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #374151; }
         .markdown-content p { margin-bottom: 1.25rem; font-size: 1.125rem; color: #4b5563; }
         .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; color: #4b5563; }
-        .markdown-content img { border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem; max-width: 100%; height: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .markdown-content a { color: #2563eb; text-decoration: underline; }
-        
+        .markdown-content pre { background-color: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1.25rem; }
+        .markdown-content code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.875rem; }
         .nav-active { background-color: #e5e7eb; font-weight: 600; color: #111827; }
-        [v-cloak] { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
 
     <!-- 
     ========================================================================
-    EDIT YOUR CONTENT HERE!
-    You do not need to touch the HTML below. Just edit the text inside 
-    the backticks (`...`) to change your website's content.
+    EDIT YOUR CONFIGURATION HERE
+    This is the ONLY part of this file you need to change.
     ========================================================================
     -->
     <script>
-        const SITE_CONTENT = {
-            // 1. YOUR PROFILE
+        const SITE_CONFIG = {
             profile: {
                 name: "The Inquisitive Researcher",
                 subtitle: "Veterinarian & Network Biologist",
-                // You can change this URL to any image hosted on GitHub or imgur
                 photo: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=400&h=400" 
             },
 
-            // 2. YOUR MENU TABS
-            // To add a group with sub-pages, use the "subpages" list (like Learning Log).
-            // To add a standalone page, just use "id" and "label".
+            // Link to your separate .md files here
             navigation: [
                 { 
                     label: "Learning Log", 
                     subpages: [
-                        { id: "log_day1", label: "Day 1: The Divergence" },
-                        { id: "log_day2", label: "Day 2: Wiring the Graph" }
+                        { id: "log_day1", label: "Day 1: The Divergence", file: "content/log_day1.md" },
+                        { id: "log_day2", label: "Day 2: Wiring the Graph", file: "content/log_day2.md" }
                     ]
                 },
-                { id: "research", label: "NSS vs GXS Research" },
-                { id: "code", label: "R Code Snippets" }
-            ],
-
-            // 3. YOUR PAGE CONTENT (Written in Markdown)
-            pages: {
-                
-                // PAGE 1: LOG DAY 1
-                log_day1: `
-# Day 1: The Discordance
-
-Welcome to my learning log. I'm an Enneagram 7—my mind is constantly jumping between possibilities, connecting dots that others might miss. I am a vet by training, but my true playground is network biology.
-
-I was looking at the gene expression similarity space (GXS) today, and something felt off. The cells were grouping nicely by their active genes, but biology isn't just a list of ingredients. When I plotted them on the Network Similarity Space (NSS), the divergence at the transition state hit me like a ton of bricks. The network is rewiring *before* the expression levels show it. 
-                `,
-
-                // PAGE 2: LOG DAY 2
-                log_day2: `
-# Day 2: Trying to Capture the Wiring
-
-I don't write textbooks. I write down the messy process of finding the truth. Today's mess: How do I accurately quantify the distance between two local co-expression networks at the exact moment of differentiation? 
-
-\`\`\`R
-# Just a raw thought dump on topological distance
-library(igraph)
-
-# If graph G1 and G2 are single-cell specific networks at transition:
-# Simple edge-weight distance isn't enough. We need to look at module preservation.
-# The divergence on the NSS happens precisely here.
-
-print("Need to refine the metric for NSS...")
-\`\`\`
-                `,
-
-                // PAGE 3: RESEARCH
-                research: `
-# The Discordance of Cell State Graphs
-
-My current obsession is constructing cell state graphs based on the similarity of cell-specific gene coexpression networks. I call this the **Network Similarity Space (NSS)**.
-
-### The Problem
-Traditionally, we map cells using the **Gene Expression Similarity Space (GXS)**. We look at transcriptomics and group cells by what genes are turned on or off. But biology isn't just a list of ingredients; it's how the ingredients interact.
-
-### The Honest Truth
-When I plotted cells on the NSS, I found something glaring. There is a massive **discordance** between cells on the NSS and cells on the GXS. 
-
-They don't match up. 
-
-And crucially, this divergence happens exactly at the **transition state** during cell differentiation. The network rewires before the raw expression levels catch up. It's like watching the foundation of a house shift before the walls actually move.
-
-![Placeholder Graph](https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800&h=400)
-*Note: Placeholder image for future NSS trajectory graph.*
-                `,
-
-                // PAGE 4: CODE
-                code: `
-# R: The Weapon of Choice
-
-I prefer R for everything data-related. Here is a raw, conceptual snippet of how I start thinking about constructing a cell-specific coexpression network before moving into the NSS projection.
-
-\`\`\`R
-# Load necessary libraries for network biology
-library(Seurat)
-library(igraph)
-library(WGCNA)
-
-# A conceptual function to compute Network Similarity
-# (Note: This is an exploratory script, not the final pipeline)
-compute_NSS <- function(seurat_obj, cell_id_1, cell_id_2) {
-  
-  # Extract expression profiles
-  expr_1 <- GetAssayData(seurat_obj, slot = "data")[, cell_id_1]
-  expr_2 <- GetAssayData(seurat_obj, slot = "data")[, cell_id_2]
-  
-  # Compute local co-expression (simplified conceptual placeholder)
-  # Real NSS involves deeply measuring topological overlap or mutual information
-  adj_matrix_1 <- cor(matrix(expr_1, ncol=1)) # Placeholder logic
-  adj_matrix_2 <- cor(matrix(expr_2, ncol=1)) # Placeholder logic
-  
-  # Calculate distance between the two network topologies
-  # This is where GXS and NSS begin to diverge at transition states!
-  network_distance <- sum(abs(adj_matrix_1 - adj_matrix_2))
-  
-  return(network_distance)
-}
-
-print("Still exploring the best distance metric for transition states...")
-\`\`\`
-                `
-            }
+                { id: "research", label: "NSS vs GXS Research", file: "content/research.md" },
+                { id: "code", label: "R Code Snippets", file: "content/code.md" }
+            ]
         };
     </script>
-    <!-- 
-    ========================================================================
-    END OF EASY EDIT SECTION.
-    The code below renders your website.
-    ========================================================================
-    -->
+    <!-- ======================================================================== -->
 
     <div class="max-w-6xl mx-auto flex flex-col md:flex-row min-h-screen">
-        
         <!-- Sidebar Navigation -->
         <aside class="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0">
             <div class="p-6 md:sticky md:top-0">
-                <!-- Profile Area -->
                 <div class="text-center md:text-left mb-8">
                     <img id="profile-img" src="" alt="Profile" class="w-24 h-24 rounded-full mx-auto md:mx-0 object-cover mb-4 border-2 border-gray-200">
                     <h1 id="profile-name" class="text-xl font-bold text-gray-900"></h1>
                     <p id="profile-subtitle" class="text-sm text-gray-500 font-medium mt-1"></p>
                 </div>
-
-                <!-- Dynamic Menu -->
                 <nav id="nav-menu" class="flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto pb-4 md:pb-0">
-                    <!-- Buttons injected via JS -->
+                    <!-- Buttons are injected here automatically -->
                 </nav>
             </div>
         </aside>
@@ -182,31 +79,27 @@ print("Still exploring the best distance metric for transition states...")
         <main class="flex-1 p-6 md:p-12 lg:p-16 bg-gray-50">
             <div class="max-w-3xl mx-auto bg-white p-8 md:p-12 shadow-sm rounded-xl border border-gray-100">
                 <div id="content-area" class="markdown-content">
-                    <!-- Markdown content injected here -->
+                    <!-- Markdown content will load here -->
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Application Logic -->
+    <!-- Application Logic for loading files -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Populate Profile
-            document.getElementById('profile-name').textContent = SITE_CONTENT.profile.name;
-            document.getElementById('profile-subtitle').textContent = SITE_CONTENT.profile.subtitle;
-            document.getElementById('profile-img').src = SITE_CONTENT.profile.photo;
+            document.getElementById('profile-name').textContent = SITE_CONFIG.profile.name;
+            document.getElementById('profile-subtitle').textContent = SITE_CONFIG.profile.subtitle;
+            document.getElementById('profile-img').src = SITE_CONFIG.profile.photo;
 
-            // 2. Setup Navigation
             const navMenu = document.getElementById('nav-menu');
             const contentArea = document.getElementById('content-area');
-            
-            // Find the first valid page ID to load by default (whether standalone or inside a subpage)
-            let currentPageId = SITE_CONTENT.navigation[0].id || SITE_CONTENT.navigation[0].subpages[0].id;
+            let defaultItem = SITE_CONFIG.navigation[0].subpages ? SITE_CONFIG.navigation[0].subpages[0] : SITE_CONFIG.navigation[0];
 
-            function renderPage(pageId) {
-                // Update active button styling
+            async function renderPage(item) {
+                // Highlight the active button
                 document.querySelectorAll('.nav-btn').forEach(btn => {
-                    if(btn.dataset.id === pageId) {
+                    if(btn.dataset.id === item.id) {
                         btn.classList.add('nav-active', 'bg-gray-100', 'text-gray-900');
                         btn.classList.remove('text-gray-600', 'hover:bg-gray-50');
                     } else {
@@ -215,17 +108,31 @@ print("Still exploring the best distance metric for transition states...")
                     }
                 });
 
-                // Convert Markdown to HTML and inject
-                const rawMarkdown = SITE_CONTENT.pages[pageId] || "Page not found.";
-                contentArea.innerHTML = marked.parse(rawMarkdown);
+                contentArea.innerHTML = "<p class='text-gray-500 animate-pulse'>Loading research notes...</p>";
 
-                // Re-initialize code highlighting for R snippets
-                document.querySelectorAll('pre code').forEach((block) => {
-                    hljs.highlightElement(block);
-                });
+                try {
+                    // This fetches your external .md files
+                    const response = await fetch(item.file);
+                    if (!response.ok) throw new Error(`Could not load ${item.file}`);
+                    
+                    const rawMarkdown = await response.text();
+                    contentArea.innerHTML = marked.parse(rawMarkdown);
+
+                    // Applies R code highlighting
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                } catch (error) {
+                    contentArea.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                            <h3 class="text-red-800 font-bold">Error Loading File</h3>
+                            <p class="text-red-700 mt-2">Could not find <code>${item.file}</code>.</p>
+                            <p class="text-red-700 mt-2 text-sm"><strong>Note:</strong> If you are testing this locally or in a preview window, the browser blocks dynamic file loading for security, or the file doesn't exist yet. It will work perfectly once pushed to GitHub Pages with your 'content' folder!</p>
+                        </div>
+                    `;
+                }
             }
 
-            // Helper function to create a navigation button
             function createNavButton(item) {
                 const btn = document.createElement('button');
                 btn.textContent = item.label;
@@ -233,8 +140,7 @@ print("Still exploring the best distance metric for transition states...")
                 btn.className = "nav-btn text-left px-4 py-2 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap md:whitespace-normal w-full";
                 
                 btn.addEventListener('click', () => {
-                    renderPage(item.id);
-                    // Scroll to top on mobile when clicking a menu item
+                    renderPage(item);
                     if(window.innerWidth < 768) {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
@@ -242,21 +148,17 @@ print("Still exploring the best distance metric for transition states...")
                 return btn;
             }
 
-            // 3. Build Menu Buttons
-            SITE_CONTENT.navigation.forEach(navItem => {
+            SITE_CONFIG.navigation.forEach(navItem => {
                 if (navItem.subpages) {
-                    // Create a collapsible group (using HTML5 details/summary)
                     const details = document.createElement('details');
-                    details.open = true; // Open by default
+                    details.open = true;
                     details.className = "mb-3 group";
 
                     const summary = document.createElement('summary');
                     summary.textContent = navItem.label;
-                    // Dyslexia-friendly: bold, uppercase, clear category headers
                     summary.className = "cursor-pointer list-none font-bold text-gray-400 uppercase tracking-wider text-xs px-2 mb-2 hover:text-gray-600 transition-colors";
                     details.appendChild(summary);
 
-                    // Container for sub-items with indentation and a left border line
                     const subContainer = document.createElement('div');
                     subContainer.className = "flex flex-col space-y-1 border-l-2 border-gray-100 ml-3 pl-2";
 
@@ -268,15 +170,14 @@ print("Still exploring the best distance metric for transition states...")
                     details.appendChild(subContainer);
                     navMenu.appendChild(details);
                 } else {
-                    // Create a standard standalone button
                     const btn = createNavButton(navItem);
                     btn.classList.add('mb-2');
                     navMenu.appendChild(btn);
                 }
             });
 
-            // 4. Initial Render
-            renderPage(currentPageId);
+            // Load the first page on startup
+            renderPage(defaultItem);
         });
     </script>
 </body>
