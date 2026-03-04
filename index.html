@@ -26,6 +26,13 @@
         .markdown-content pre { background-color: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1.25rem; }
         .markdown-content code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.875rem; }
         .nav-active { background-color: #e5e7eb; font-weight: 600; color: #111827; }
+        
+        /* Add a small icon class for external links */
+        .external-link::after {
+            content: ' ↗';
+            font-size: 0.8em;
+            color: #888;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
@@ -61,6 +68,14 @@
                     ]
                 },
                 { id: "research", label: "NSS vs GXS Research", file: "content/research.md" },
+                { 
+                    label: "Simulators", 
+                    subpages: [
+                        { id: "sim_readme", label: "📖 Simulators README", file: "content/sim_readme.md" },
+                        { id: "sim_landscape", label: "🌐 Landscape Sim (3D)", file: "landscape_sim.html", type: "link" },
+                        { id: "sim_other", label: "⏳ Other Sim (Coming Soon)", file: "#", type: "link" }
+                    ]
+                },
                 { id: "code", label: "R Code Snippets", file: "content/code.md" }
             ]
         };
@@ -106,7 +121,8 @@
             async function renderPage(item) {
                 // Highlight the active button
                 document.querySelectorAll('.nav-btn').forEach(btn => {
-                    if(btn.dataset.id === item.id) {
+                    // Don't highlight external links
+                    if(btn.dataset.id === item.id && item.type !== 'link') {
                         btn.classList.add('nav-active', 'bg-gray-100', 'text-gray-900');
                         btn.classList.remove('text-gray-600', 'hover:bg-gray-50');
                     } else {
@@ -140,13 +156,26 @@
                 }
             }
 
+            // MODIFIED: This function now handles standard Markdown pages AND external links
             function createNavButton(item) {
                 const btn = document.createElement('button');
                 btn.textContent = item.label;
                 btn.dataset.id = item.id;
                 btn.className = "nav-btn text-left px-4 py-2 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap md:whitespace-normal w-full";
                 
+                // Add a small arrow indicator if it's an external link
+                if (item.type === 'link') {
+                    btn.classList.add('external-link');
+                }
+                
                 btn.addEventListener('click', () => {
+                    // IF IT IS A LINK: Open in new tab and stop the function
+                    if (item.type === 'link') {
+                        window.open(item.file, '_blank');
+                        return; 
+                    }
+                    
+                    // IF IT IS MARKDOWN: Render as normal
                     renderPage(item);
                     if(window.innerWidth < 768) {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
