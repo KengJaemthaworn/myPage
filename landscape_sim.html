@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cellular Landscape Geodesic Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #ffffff; /* Default White */
+            color: #333333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        /* Dark Theme Overrides */
+        body.dark-theme {
+            background-color: #111111;
+            color: #eeeeee;
+        }
+        body.dark-theme #parameter-panel, 
+        body.dark-theme #simulate-panel {
+            background: rgba(20, 20, 20, 0.85);
+            border-color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        body.dark-theme h1, 
+        body.dark-theme h2.section-title, 
+        body.dark-theme .state-header {
+            color: #eeeeee;
+            border-color: #444;
+        }
+        body.dark-theme p, body.dark-theme label {
+            color: #bbbbbb;
+        }
+        body.dark-theme .state-box {
+            background: #222222;
+            border-color: #333;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #parameter-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            max-width: 350px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        #simulate-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            max-width: 350px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        h1 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #222;
+            font-weight: 600;
+        }
+        p {
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9rem;
+            margin: 4px 0;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s, filter 0.2s;
+            font-weight: bold;
+            width: 100%;
+        }
+        button:hover { filter: brightness(1.1); }
+        .btn-reset { background-color: #d9534f; }
+        
+        #controls { margin-top: 15px; }
+        .control-group { margin-bottom: 10px; }
+        label {
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type=range] { width: 100%; }
+        h2.section-title {
+            font-size: 0.95rem;
+            color: #222;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .state-box {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+        .state-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: #444;
+        }
+        .btn-remove {
+            background: #d9534f;
+            padding: 2px 5px;
+            font-size: 0.7rem;
+            margin: 0;
+            width: auto;
+        }
+        
+        /* Collapsible menu CSS */
+        details > summary {
+            list-style: none;
+            cursor: pointer;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::after {
+            content: '▼';
+            font-size: 0.8rem;
+            color: #888;
+        }
+        details[open] > summary::after { content: '▲'; }
+        .panel-content { margin-top: 10px; }
+        .action-buttons {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #eee;
+        }
+        body.dark-theme .action-buttons { border-color: #444; }
+        
+        .preset-grid {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+    <!-- Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="parameter-panel">
+        <details open>
+            <summary><h1>Geodesic Topology Sim</h1></summary>
+            <div class="panel-content">
+                <button id="theme-btn" style="background-color: #333; color: white; margin-bottom: 15px;">🌙 Dark Mode</button>
+                
+                <p>Cells (mass) move along the interaction manifold (gravity). Watch how they navigate from High Potency to Low Potency states.</p>
+                
+                <h2 class="section-title">Presets</h2>
+                <div class="preset-grid">
+                    <button id="preset-waddington-btn" style="background-color: #5bc0de; font-size: 0.8rem; padding: 8px;">Classic Waddington</button>
+                    <button id="preset-random-btn" style="background-color: #9b59b6; font-size: 0.8rem; padding: 8px;">Randomize</button>
+                </div>
+
+                <h2 class="section-title">Shape the Manifold (Define States)</h2>
+                <div id="dynamic-states">
+                    <!-- State controls injected here via JS -->
+                </div>
+                <button id="add-state-btn" style="background-color: #f0ad4e; color: #333;">+ Add New State</button>
+            </div>
+        </details>
+        
+        <p style="font-size: 0.75rem; margin-top: 15px; border-top: 1px solid #444; padding-top: 10px;">
+            <em>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</em>
+        </p>
+    </div>
+
+    <div id="simulate-panel">
+        <details open>
+            <summary>
+                <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Simulation</h2>
+            </summary>
+            <div class="panel-content">
+                <div id="controls">
+                    <div class="control-group">
+                        <label for="friction">Signal Inertia: <span id="fric-val">0.96</span></label>
+                        <input type="range" id="friction" min="0.8" max="0.99" step="0.01" value="0.96">
+                    </div>
+                    <div class="control-group">
+                        <label for="noise">Noise response: <span id="noise-val">0.05</span></label>
+                        <input type="range" id="noise" min="0" max="0.2" step="0.01" value="0.05">
+                    </div>
+                </div>
+                
+                <div class="action-buttons" style="border-top: none; padding-top: 0; margin-top: 10px;">
+                    <button id="spawn-btn">Drop Cell (Gaussian Spread)</button>
+                    <button id="spawn-scatter-btn" style="background-color: #5bc0de;">Spawn Batch (Gaussian Batch)</button>
+                    <button id="reset-btn" class="btn-reset">Clear Cells</button>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // --- 0. HELPER: GAUSSIAN DISTRIBUTION ---
+        // ใช้ Box-Muller transform เพื่อสร้างการกระจายตัวแบบระฆังคว่ำ (Normal Distribution)
+        // แทนการสุ่มแบบกระจายตัวเท่ากัน (Uniform) ยิ่งไกลจากศูนย์กลาง โอกาสเกิดยิ่งน้อยลง
+        function randomGaussian() {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random(); 
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        // --- 1. SETUP THREE.JS SCENE ---
+        let isDarkMode = false;
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0xffffff, 0.015); // Light fog default
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 15, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // --- CAMERA CONTROLS & EVENT FIX ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngleX = 0;
+        let cameraAngleY = 0.5;
+        const cameraRadius = 30;
+
+        function updateCameraPosition() {
+            camera.position.x = cameraRadius * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.position.y = cameraRadius * Math.sin(cameraAngleY);
+            camera.position.z = cameraRadius * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.lookAt(0, 0, 0);
+        }
+        updateCameraPosition();
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#parameter-panel') || e.target.closest('#simulate-panel')) return;
+            isDragging = true;
+        });
+        document.addEventListener('mouseup', () => isDragging = false);
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.offsetX - previousMousePosition.x,
+                    y: e.offsetY - previousMousePosition.y
+                };
+                cameraAngleX -= deltaMove.x * 0.01;
+                cameraAngleY += deltaMove.y * 0.01;
+                cameraAngleY = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, cameraAngleY));
+                updateCameraPosition();
+            }
+            previousMousePosition = { x: e.offsetX, y: e.offsetY };
+        });
+        document.addEventListener('wheel', (e) => {
+            if (e.target.closest('#parameter-panel') || e.target.closest('#simulate-panel')) return;
+            camera.position.y += e.deltaY * 0.05;
+            camera.position.z += e.deltaY * 0.05;
+            camera.lookAt(0,0,0);
+        });
+
+        // --- 2. MATHEMATICAL LANDSCAPE DEFINITION ---
+        let landscapeStates = [
+            { id: 1, x: 20, y: 30, z: 8, w: 15 },   
+            { id: 2, x: 80, y: 20, z: 6, w: 15 },   
+            { id: 3, x: 60, y: 80, z: -6, w: 20 },  
+            { id: 4, x: 30, y: 85, z: -4, w: 20 }   
+        ];
+        let nextStateId = 5;
+
+        function getLandscapeHeight(x, z) {
+            let y = 0; 
+            landscapeStates.forEach(state => {
+                const mappedX = (state.x / 100) * 30 - 15;
+                const mappedZ = (state.y / 100) * 30 - 15; 
+                const width = state.w || 15; 
+                y += state.z * Math.exp(-((x - mappedX)**2 + (z - mappedZ)**2) / width);
+            });
+            
+            let edgeMaskX = Math.max(0, 1 - Math.pow(x / 14.5, 12));
+            let edgeMaskZ = Math.max(0, 1 - Math.pow(z / 14.5, 12));
+            y *= (edgeMaskX * edgeMaskZ);
+            return y;
+        }
+
+        // --- Color Mapping Helper ---
+        const colRed = new THREE.Color(0xd93838);    
+        const colYellow = new THREE.Color(0xe8c547); 
+        const colBlue = new THREE.Color(0x389ed9);   
+        const colPurple = new THREE.Color(0x7c38d9); 
+
+        function getVertexColor(y) {
+            const normalizedHeight = Math.max(0, Math.min(1, (y + 10) / 20)); 
+            const c = new THREE.Color();
+            if (normalizedHeight > 0.66) {
+                const t = (normalizedHeight - 0.66) / 0.34;
+                c.lerpColors(colYellow, colRed, t);
+            } else if (normalizedHeight > 0.33) {
+                const t = (normalizedHeight - 0.33) / 0.33;
+                c.lerpColors(colBlue, colYellow, t);
+            } else {
+                const t = normalizedHeight / 0.33;
+                c.lerpColors(colPurple, colBlue, t);
+            }
+            return c;
+        }
+
+        // --- 3. BUILD THE 3D MESH ---
+        const mapSize = 30;
+        const resolution = 150;
+        const geometry = new THREE.PlaneGeometry(mapSize, mapSize, resolution, resolution);
+        geometry.rotateX(-Math.PI / 2);
+
+        const positions = geometry.attributes.position;
+        const colors = [];
+        const colorObj = new THREE.Color();
+
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i);
+            const z = positions.getZ(i);
+            const y = getLandscapeHeight(x, z);
+            positions.setY(i, y);
+            const c = getVertexColor(y);
+            colors.push(c.r, c.g, c.b);
+        }
+
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.8,
+            emissive: 0x000000,
+            emissiveIntensity: 0.0
+        });
+
+        const landscape = new THREE.Mesh(geometry, material);
+        scene.add(landscape);
+
+        const solidMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf0f0f0,
+            roughness: 0.9,
+            side: THREE.DoubleSide
+        });
+        const solidLandscape = new THREE.Mesh(geometry, solidMaterial);
+        solidLandscape.position.y = -0.2;
+        scene.add(solidLandscape);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- 4. PHYSICS & CELL SIMULATION ---
+        const cells = [];
+        const cellGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+        const cellMaterial = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            roughness: 0.2,
+            metalness: 0.8
+        });
+
+        function getGradient(x, z) {
+            const h = 0.01;
+            const dy_dx = (getLandscapeHeight(x + h, z) - getLandscapeHeight(x - h, z)) / (2 * h);
+            const dy_dz = (getLandscapeHeight(x, z + h) - getLandscapeHeight(x, z - h)) / (2 * h);
+            return { dx: dy_dx, dz: dy_dz };
+        }
+
+        // อัปเดตฟังก์ชันให้อ่านค่าตำแหน่งตรงๆ ไม่มีการสุ่มแฝงข้างในอีกต่อไป
+        // เพราะเราจะคำนวณ Gaussian Distribution เสร็จก่อนส่งเข้ามาที่นี่
+        function spawnCell(startX, startZ) {
+            const mat = cellMaterial.clone();
+            mat.color.setHex(isDarkMode ? 0xffffff : 0x333333);
+            const cellMesh = new THREE.Mesh(cellGeometry, mat);
+            
+            scene.add(cellMesh);
+            
+            const maxTrailPoints = 1000;
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailPositions = new Float32Array(maxTrailPoints * 3);
+            trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+            trailGeometry.setDrawRange(0, 0);
+            
+            const trailMaterial = new THREE.LineBasicMaterial({ 
+                color: isDarkMode ? 0xaaaaaa : 0x444444, 
+                linewidth: 2, 
+                transparent: true, 
+                opacity: 0.6 
+            });
+            const trailLine = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trailLine);
+
+            cells.push({
+                mesh: cellMesh,
+                trail: trailLine,
+                trailPts: 0,
+                x: startX,
+                z: startZ,
+                vx: 0,
+                vz: 0
+            });
+        }
+
+        function updateLandscapeGeometry() {
+            const positions = landscape.geometry.attributes.position;
+            const colors = landscape.geometry.attributes.color;
+
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const z = positions.getZ(i);
+                const y = getLandscapeHeight(x, z);
+                positions.setY(i, y);
+
+                const colorObj = getVertexColor(y);
+                colors.setXYZ(i, colorObj.r, colorObj.g, colorObj.b);
+            }
+
+            landscape.geometry.attributes.position.needsUpdate = true;
+            landscape.geometry.attributes.color.needsUpdate = true;
+            landscape.geometry.computeVertexNormals(); 
+
+            const solidPositions = solidLandscape.geometry.attributes.position;
+            for (let i = 0; i < solidPositions.count; i++) {
+                const x = solidPositions.getX(i);
+                const z = solidPositions.getZ(i);
+                const y = getLandscapeHeight(x, z);
+                solidPositions.setY(i, y);
+            }
+            solidLandscape.geometry.attributes.position.needsUpdate = true;
+            solidLandscape.geometry.computeVertexNormals();
+        }
+
+        // --- UI Listeners & Presets ---
+        
+        document.getElementById('theme-btn').addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-theme', isDarkMode);
+            const btn = document.getElementById('theme-btn');
+            
+            if (isDarkMode) {
+                scene.fog.color.setHex(0x111111);
+                solidLandscape.material.color.setHex(0x050505);
+                btn.innerText = '☀️ Light Mode';
+                btn.style.backgroundColor = '#f0f0f0';
+                btn.style.color = '#333';
+            } else {
+                scene.fog.color.setHex(0xffffff);
+                solidLandscape.material.color.setHex(0xf0f0f0);
+                btn.innerText = '🌙 Dark Mode';
+                btn.style.backgroundColor = '#333';
+                btn.style.color = '#fff';
+            }
+            
+            cells.forEach(c => {
+                c.mesh.material.color.setHex(isDarkMode ? 0xffffff : 0x333333);
+                c.trail.material.color.setHex(isDarkMode ? 0xaaaaaa : 0x444444);
+            });
+        });
+
+        // Waddington Preset
+        document.getElementById('preset-waddington-btn').addEventListener('click', () => {
+            landscapeStates = [
+                { id: 1, x: 50, y: 10, z: 10, w: 40 },  
+                { id: 2, x: 25, y: 75, z: -10, w: 40 }, 
+                { id: 3, x: 75, y: 75, z: -10, w: 40 }, 
+                { id: 4, x: 50, y: 50, z: 3, w: 25 },   
+                { id: 5, x: 50, y: 100, z: 8, w: 60 }   
+            ];
+            nextStateId = 6;
+            renderStateUI();
+            updateLandscapeGeometry();
+        });
+
+        // Random Preset
+        document.getElementById('preset-random-btn').addEventListener('click', () => {
+            landscapeStates = [];
+            const numStates = Math.floor(Math.random() * 3) + 3; 
+            for(let i=0; i<numStates; i++){
+                landscapeStates.push({
+                    id: nextStateId++,
+                    x: Math.floor(Math.random() * 80) + 10, 
+                    y: Math.floor(Math.random() * 80) + 10,
+                    z: (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 6) + 3),
+                    w: Math.floor(Math.random() * 20) + 10 
+                });
+            }
+            renderStateUI();
+            updateLandscapeGeometry();
+        });
+
+        function renderStateUI() {
+            const container = document.getElementById('dynamic-states');
+            container.innerHTML = ''; 
+            
+            landscapeStates.forEach((state, index) => {
+                const box = document.createElement('div');
+                box.className = 'state-box';
+                
+                const header = document.createElement('div');
+                header.className = 'state-header';
+                header.innerHTML = `<span>State ${index + 1}</span>`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove';
+                removeBtn.innerText = 'X';
+                removeBtn.onclick = () => {
+                    landscapeStates = landscapeStates.filter(s => s.id !== state.id);
+                    renderStateUI();
+                    updateLandscapeGeometry();
+                };
+                header.appendChild(removeBtn);
+                box.appendChild(header);
+
+                box.innerHTML += `
+                    <label>Location X (0-100): <span id="val-x-${state.id}">${state.x}</span></label>
+                    <input type="range" id="input-x-${state.id}" min="0" max="100" step="1" value="${state.x}">
+                    
+                    <label>Location Y (0-100): <span id="val-y-${state.id}">${state.y}</span></label>
+                    <input type="range" id="input-y-${state.id}" min="0" max="100" step="1" value="${state.y}">
+                    
+                    <label>Potency Z (-10 to 10): <span id="val-z-${state.id}">${state.z}</span></label>
+                    <input type="range" id="input-z-${state.id}" min="-10" max="10" step="0.5" value="${state.z}">
+                    
+                    <label>Width/Spread (5-60): <span id="val-w-${state.id}">${state.w}</span></label>
+                    <input type="range" id="input-w-${state.id}" min="5" max="60" step="1" value="${state.w}">
+                `;
+                
+                container.appendChild(box);
+                
+                ['x', 'y', 'z', 'w'].forEach(axis => {
+                    document.getElementById(`input-${axis}-${state.id}`).addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        document.getElementById(`val-${axis}-${state.id}`).innerText = val;
+                        const s = landscapeStates.find(s => s.id === state.id);
+                        if (s) s[axis] = val;
+                        updateLandscapeGeometry();
+                    });
+                });
+            });
+        }
+
+        renderStateUI();
+
+        document.getElementById('add-state-btn').addEventListener('click', () => {
+            landscapeStates.push({
+                id: nextStateId++,
+                x: Math.floor(Math.random() * 100),
+                y: Math.floor(Math.random() * 100),
+                z: (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 3),
+                w: 15 
+            });
+            renderStateUI();
+            updateLandscapeGeometry();
+        });
+
+        let frictionSetting = 0.96;
+        let noiseSetting = 0.05;
+        
+        document.getElementById('friction').addEventListener('input', (e) => {
+            frictionSetting = parseFloat(e.target.value);
+            document.getElementById('fric-val').innerText = frictionSetting.toFixed(2);
+        });
+        
+        document.getElementById('noise').addEventListener('input', (e) => {
+            noiseSetting = parseFloat(e.target.value);
+            document.getElementById('noise-val').innerText = noiseSetting.toFixed(2);
+        });
+
+        // -------------------------------------------------------------
+        // NEW SPAWN LOGIC: NUDGE + GAUSSIAN DISTRIBUTION
+        // -------------------------------------------------------------
+        
+        document.getElementById('spawn-btn').addEventListener('click', () => {
+            let highPotency = landscapeStates.reduce((prev, current) => (prev.z > current.z) ? prev : current, {x: 50, y: 50, z: 0});
+            const mappedX = (highPotency.x / 100) * 30 - 15;
+            const mappedZ = (highPotency.y / 100) * 30 - 15;
+            
+            let dirX = 0 - mappedX;
+            let dirZ = 0 - mappedZ;
+            let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+            
+            let spawnBaseX = mappedX;
+            let spawnBaseZ = mappedZ;
+            
+            // ขยับ Nudge เข้าหาศูนย์กลางเล็กน้อย เพื่อให้ตั้งต้นบนสโลปที่ถูกต้อง
+            if (len > 0) {
+                spawnBaseX += (dirX / len) * 1.5;
+                spawnBaseZ += (dirZ / len) * 1.5;
+            }
+            
+            // ใส่ Gaussian Spread (ระยะแกว่ง = 1.0)
+            let finalX = spawnBaseX + randomGaussian() * 1.0;
+            let finalZ = spawnBaseZ + randomGaussian() * 1.0;
+            
+            spawnCell(finalX, finalZ);
+        });
+
+        document.getElementById('spawn-scatter-btn').addEventListener('click', () => {
+            let highPotency = landscapeStates.reduce((prev, current) => (prev.z > current.z) ? prev : current, {x: 50, y: 50, z: 0});
+            const mappedX = (highPotency.x / 100) * 30 - 15;
+            const mappedZ = (highPotency.y / 100) * 30 - 15;
+
+            let dirX = 0 - mappedX;
+            let dirZ = 0 - mappedZ;
+            let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+            
+            let spawnBaseX = mappedX;
+            let spawnBaseZ = mappedZ;
+            
+            if (len > 0) {
+                spawnBaseX += (dirX / len) * 1.5;
+                spawnBaseZ += (dirZ / len) * 1.5;
+            }
+
+            // ปล่อย 10 เซลล์เพื่อให้เห็นระฆังคว่ำ (Gaussian Distribution) ชัดเจน
+            // ค่า 2.0 คือ Standard Deviation ของการกระจาย ยิ่งมากยิ่งกว้าง
+            for(let i=0; i<10; i++){
+                let finalX = spawnBaseX + randomGaussian() * 2.0;
+                let finalZ = spawnBaseZ + randomGaussian() * 2.0;
+                spawnCell(finalX, finalZ);
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            cells.forEach(cell => {
+                scene.remove(cell.mesh);
+                scene.remove(cell.trail); 
+            });
+            cells.length = 0;
+        });
+
+        // --- 5. ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            cells.forEach(cell => {
+                const grad = getGradient(cell.x, cell.z);
+                const gravityStrength = 0.4;
+                
+                cell.vx -= grad.dx * gravityStrength;
+                cell.vz -= grad.dz * gravityStrength;
+
+                if (noiseSetting > 0) {
+                    cell.vx += (Math.random() - 0.5) * noiseSetting;
+                    cell.vz += (Math.random() - 0.5) * noiseSetting;
+                }
+
+                cell.vx *= frictionSetting;
+                cell.vz *= frictionSetting;
+
+                cell.x += cell.vx * dt * 10;
+                cell.z += cell.vz * dt * 10;
+
+                const halfMap = mapSize / 2;
+                if(cell.x > halfMap) { cell.x = halfMap; cell.vx *= -0.5; }
+                if(cell.x < -halfMap) { cell.x = -halfMap; cell.vx *= -0.5; }
+                if(cell.z > halfMap) { cell.z = halfMap; cell.vz *= -0.5; }
+                if(cell.z < -halfMap) { cell.z = -halfMap; cell.vz *= -0.5; }
+
+                const y = getLandscapeHeight(cell.x, cell.z);
+                cell.mesh.position.set(cell.x, y + 0.3, cell.z); 
+
+                if (cell.trailPts < 1000) {
+                    const positions = cell.trail.geometry.attributes.position.array;
+                    positions[cell.trailPts * 3] = cell.x;
+                    positions[cell.trailPts * 3 + 1] = y + 0.1; 
+                    positions[cell.trailPts * 3 + 2] = cell.z;
+                    
+                    cell.trailPts++;
+                    cell.trail.geometry.setDrawRange(0, cell.trailPts);
+                    cell.trail.geometry.attributes.position.needsUpdate = true;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
