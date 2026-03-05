@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watts-Strogatz BFS Wavefront Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { margin: 0; background-color: #030712; color: #f1f5f9; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 10; }
+        
+        /* Panel Base Styles */
+        .panel {
+            background: rgba(17, 24, 39, 0.85); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; 
+            display: flex; flex-direction: column;
+            z-index: 50;
+        }
+        
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
+        }
+        
+        .panel-content { padding: 16px; overflow: hidden; transition: opacity 0.2s; }
+        
+        /* CSS Fix for complete collapse */
+        .panel.collapsed { width: max-content !important; height: max-content !important; }
+        .panel.collapsed .panel-content { display: none !important; padding: 0; }
+        .panel.collapsed .panel-header { border-bottom: none; }
+        
+        .minimize-btn {
+            background: rgba(255,255,255,0.1); border: none; color: #94a3b8;
+            width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; transition: all 0.2s; margin-left: 16px;
+        }
+        .minimize-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Specific Panels */
+        #hudPanel { top: 20px; left: 20px; width: 340px; }
+        #trackerPanel { top: 20px; right: 20px; width: 300px; }
+        #configPanel { top: 180px; right: 20px; width: 300px; max-height: calc(100vh - 280px); overflow-y: auto;}
+        #dockPanel { bottom: 30px; left: 50%; transform: translateX(-50%); width: max-content; flex-direction: row; align-items: stretch; }
+        #dockPanel.collapsed { transform: translateX(-50%); } 
+        
+        .dock-content { display: flex; gap: 12px; padding: 12px; }
+        .panel.collapsed .dock-content { display: none !important; }
+
+        input[type=range] { width: 100%; accent-color: #6366f1; height: 6px; border-radius: 3px; background: #374151; appearance: none; cursor: pointer;}
+        
+        /* Chart */
+        #chartContainer {
+            position: relative; width: 100%; height: 140px;
+            margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);
+            border-left: 1px solid rgba(255,255,255,0.2);
+        }
+        .y-axis-label { position: absolute; left: -25px; font-size: 9px; color: #64748b; font-family: monospace; }
+        .x-axis-label { position: absolute; bottom: -18px; font-size: 9px; color: #64748b; font-family: monospace; transform: translateX(-50%); }
+
+        /* Progress Bar */
+        .progress-bg { background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; margin-top: 8px;}
+        .progress-fill { background: #f43f5e; height: 100%; width: 0%; transition: width 0.1s linear; box-shadow: 0 0 10px #f43f5e;}
+    </style>
+</head>
+<body>
+
+    <div id="hudPanel" class="panel">
+        <div class="panel-header">
+            <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Phase Space Metrics</span>
+            <button class="minimize-btn" data-target="hudPanel">—</button>
+        </div>
+        <div class="panel-content">
+            <div class="flex gap-4 mb-4">
+                <div class="flex-1">
+                    <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Raw L</div>
+                    <div id="metric-L" class="text-xl font-black text-white font-mono">0.00</div>
+                </div>
+                <div class="flex-1 border-l border-white/10 pl-4">
+                    <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Raw C</div>
+                    <div id="metric-C" class="text-xl font-black text-white font-mono">0.00</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4 text-[9px] mb-2">
+                <span class="text-indigo-400 font-bold flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-indigo-400"></div> L (Norm)</span>
+                <span class="text-emerald-400 font-bold flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-emerald-400"></div> C (Norm)</span>
+            </div>
+
+            <div id="chartContainer">
+                <div class="y-axis-label" style="top: -5px;">Max</div>
+                <div class="y-axis-label" style="bottom: -5px;">Min</div>
+                
+                <div class="x-axis-label" style="left: 0%;">10⁻⁴</div>
+                <div class="x-axis-label" style="left: 50%;">10⁻²</div>
+                <div class="x-axis-label" style="left: 100%;">10⁰</div>
+
+                <canvas id="chartCanvas" width="300" height="140"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="trackerPanel" class="panel">
+        <div class="panel-header">
+            <span class="text-[10px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                BFS Wavefront Tracker
+            </span>
+            <button class="minimize-btn" data-target="trackerPanel">—</button>
+        </div>
+        <div class="panel-content">
+            <div class="flex justify-between items-end mb-2">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time (0.1s Ticks)</div>
+                    <div id="stepCounter" class="text-4xl font-black text-white font-mono">0</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coverage</div>
+                    <div id="coverageText" class="text-xl font-bold text-rose-400 font-mono">0%</div>
+                </div>
+            </div>
+            <div class="progress-bg">
+                <div id="coverageBar" class="progress-fill"></div>
+            </div>
+            <div id="statusText" class="text-[9px] text-slate-500 mt-3 font-mono text-center uppercase tracking-widest">
+                Awaiting Signal Injection
+            </div>
+        </div>
+    </div>
+
+    <div id="configPanel" class="panel">
+        <div class="panel-header">
+            <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Topology Config</span>
+            <button class="minimize-btn" data-target="configPanel">—</button>
+        </div>
+        <div class="panel-content space-y-6">
+            <label class="block">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span class="text-slate-400 uppercase">Nodes (N)</span>
+                    <span id="nVal" class="text-indigo-400 font-mono text-sm">100</span>
+                </div>
+                <input type="range" id="param-N" min="20" max="150" step="5" value="100">
+            </label>
+
+            <label class="block">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span class="text-slate-400 uppercase">Degree (K)</span>
+                    <span id="kVal" class="text-indigo-400 font-mono text-sm">6</span>
+                </div>
+                <input type="range" id="param-K" min="2" max="12" step="2" value="6">
+            </label>
+
+            <label class="block">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span class="text-slate-400 uppercase">Shortcuts (P) [Log10]</span>
+                    <span id="pValDisplay" class="text-indigo-400 font-mono text-sm">0.0500</span>
+                </div>
+                <input type="range" id="param-P-log" min="-4" max="0" step="0.05" value="-1.3">
+            </label>
+            
+            <div class="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 text-[9px] text-indigo-300 italic">
+                <strong>Log Note:</strong> Physics engine updated to robust Breadth-First Search. The signal will never drop before covering all connected nodes.
+            </div>
+        </div>
+    </div>
+
+    <div id="dockPanel" class="panel">
+        <div class="dock-content">
+            <button id="pulseBtn" class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-rose-600/20 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641l2.5-8.5z"/></svg>
+                Inject Pulse
+            </button>
+            <button id="regenBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-3 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                Regenerate
+            </button>
+        </div>
+        <div class="panel-header" style="border:none; padding: 12px;">
+            <button class="minimize-btn" data-target="dockPanel" style="margin: 0;">—</button>
+        </div>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        window.onload = function() {
+            
+            // --- Minimize Panel Logic ---
+            document.querySelectorAll('.minimize-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const panelId = e.target.getAttribute('data-target');
+                    const panel = document.getElementById(panelId);
+                    if (!panel) return;
+                    
+                    panel.classList.toggle('collapsed');
+                    
+                    if (panel.classList.contains('collapsed')) {
+                        if(panelId === 'dockPanel') {
+                            e.target.innerText = '+ Actions';
+                            e.target.style.width = 'auto';
+                            e.target.style.padding = '0 12px';
+                        } else {
+                            e.target.innerText = '+';
+                        }
+                    } else {
+                        e.target.innerText = '—';
+                        if(panelId === 'dockPanel') {
+                            e.target.style.width = '24px';
+                            e.target.style.padding = '0';
+                            e.target.innerText = '—';
+                        }
+                    }
+                });
+            });
+
+            // --- Globals ---
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            const chartCanvas = document.getElementById('chartCanvas');
+            const chartCtx = chartCanvas.getContext('2d');
+            
+            const inputN = document.getElementById('param-N');
+            const inputK = document.getElementById('param-K');
+            const inputPLog = document.getElementById('param-P-log');
+
+            let nodes = [];
+            let edges = [];
+            let adjacency = [];
+            
+            // Tracker State
+            let broadcastSteps = 0;
+            let isBroadcasting = false;
+            let coverage = 0;
+            
+            let maxL = 1, minL = 0, maxC = 1, minC = 0;
+            let historyLog = [];
+
+            const MAX_NODES_SAFE = 200;
+            const TICK_INTERVAL = 100; // 0.1s
+            let lastTickTime = 0;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                calculateBoundaries();
+                generateNetwork();
+            }
+
+            function getRealP() {
+                let exponent = parseFloat(inputPLog.value);
+                if (exponent <= -4) return 0;
+                return Math.pow(10, exponent);
+            }
+
+            function resetTracker() {
+                broadcastSteps = 0;
+                isBroadcasting = false;
+                coverage = 0;
+                document.getElementById('stepCounter').innerText = '0';
+                document.getElementById('coverageText').innerText = '0%';
+                document.getElementById('coverageBar').style.width = '0%';
+                document.getElementById('statusText').innerText = 'Awaiting Signal Injection';
+                document.getElementById('statusText').style.color = '#64748b';
+                
+                // State 0: Susceptible (signal=0, isInfected=false)
+                nodes.forEach(n => { n.signal = 0; n.isInfected = false; });
+            }
+
+            // --- Math & Generation ---
+            function calculateBoundaries() {
+                const N = Math.min(parseInt(inputN.value), MAX_NODES_SAFE);
+                const K = parseInt(inputK.value);
+                
+                let adjMax = Array.from({length: N}, () => new Set());
+                for (let i = 0; i < N; i++) {
+                    for (let j = 1; j <= K / 2; j++) {
+                        adjMax[i].add((i + j) % N); adjMax[(i + j) % N].add(i);
+                    }
+                }
+                let metricsMax = runMetrics(N, adjMax);
+                maxL = metricsMax.L; maxC = metricsMax.C;
+
+                let adjMin = Array.from({length: N}, () => new Set());
+                for (let i = 0; i < N; i++) {
+                    for (let j = 1; j <= K / 2; j++) {
+                        let u = i; let w; let attempts = 0;
+                        do { w = Math.floor(Math.random() * N); attempts++; } 
+                        while ((w === u || adjMin[u].has(w)) && attempts < 50);
+                        if(attempts < 50) { adjMin[u].add(w); adjMin[w].add(u); }
+                        adjMin[u].add((i + j) % N); adjMin[(i + j) % N].add(u);
+                    }
+                }
+                let metricsMin = runMetrics(N, adjMin);
+                minL = metricsMin.L; minC = metricsMin.C;
+                
+                if(maxL === minL) maxL = minL + 0.001;
+                if(maxC === minC) maxC = minC + 0.001;
+            }
+
+            function generateNetwork() {
+                resetTracker();
+                const N = Math.min(parseInt(inputN.value), MAX_NODES_SAFE);
+                const K = parseInt(inputK.value);
+                const P = getRealP();
+                
+                document.getElementById('pValDisplay').innerText = P === 0 ? "0.0000" : P.toFixed(4);
+
+                nodes = []; edges = [];
+                adjacency = Array.from({length: N}, () => new Set());
+
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(canvas.width, canvas.height) * 0.35;
+
+                for (let i = 0; i < N; i++) {
+                    const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+                    nodes.push({ id: i, x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius, signal: 0, isInfected: false });
+                }
+
+                for (let i = 0; i < N; i++) {
+                    for (let j = 1; j <= K / 2; j++) {
+                        let target = (i + j) % N;
+                        edges.push({ source: i, target: target, isRewired: false });
+                        adjacency[i].add(target); adjacency[target].add(i);
+                    }
+                }
+
+                if (P > 0) {
+                    for (let i = 0; i < N; i++) {
+                        for (let j = 1; j <= K / 2; j++) {
+                            if (Math.random() < P) {
+                                let w; let attempts = 0;
+                                do { w = Math.floor(Math.random() * N); attempts++; } 
+                                while ((w === i || adjacency[i].has(w)) && attempts < 50);
+                                if (attempts < 50) {
+                                    edges.push({ source: i, target: w, isRewired: true });
+                                    adjacency[i].add(w); adjacency[w].add(i);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let metrics = runMetrics(N, adjacency);
+                document.getElementById('metric-L').innerText = metrics.L.toFixed(2);
+                document.getElementById('metric-C').innerText = metrics.C.toFixed(3);
+
+                historyLog.push({ p: P, normL: (metrics.L - minL) / (maxL - minL), normC: (metrics.C - minC) / (maxC - minC) });
+                drawLiveChart();
+                drawMainCanvas();
+            }
+
+            function runMetrics(N, adjList) {
+                let totalPathLength = 0, reachablePairs = 0;
+                for (let start = 0; start < N; start++) {
+                    let distances = new Array(N).fill(-1);
+                    let queue = [start]; distances[start] = 0;
+                    while (queue.length > 0) {
+                        let current = queue.shift();
+                        for (let neighbor of adjList[current]) {
+                            if (distances[neighbor] === -1) {
+                                distances[neighbor] = distances[current] + 1;
+                                totalPathLength += distances[neighbor];
+                                reachablePairs++; queue.push(neighbor);
+                            }
+                        }
+                    }
+                }
+                let L = reachablePairs > 0 ? totalPathLength / reachablePairs : 0;
+
+                let globalC = 0;
+                for (let i = 0; i < N; i++) {
+                    let neighbors = Array.from(adjList[i]);
+                    let k_i = neighbors.length;
+                    if (k_i < 2) continue;
+                    let actualLinks = 0;
+                    for (let a = 0; a < k_i; a++) {
+                        for (let b = a + 1; b < k_i; b++) {
+                            if (adjList[neighbors[a]].has(neighbors[b])) actualLinks++;
+                        }
+                    }
+                    globalC += actualLinks / ((k_i * (k_i - 1)) / 2);
+                }
+                return { L, C: globalC / N };
+            }
+
+            function drawLiveChart() {
+                if (!chartCtx) return;
+                chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                const w = chartCanvas.width, h = chartCanvas.height, padY = 5; 
+
+                chartCtx.strokeStyle = 'rgba(255,255,255,0.08)'; chartCtx.lineWidth = 1;
+                [0, 0.5, 1].forEach(tick => {
+                    let y = h - padY - (tick * (h - padY*2));
+                    chartCtx.beginPath(); chartCtx.moveTo(0, y); chartCtx.lineTo(w, y); chartCtx.stroke();
+                });
+                for (let exp = -4; exp <= 0; exp++) {
+                    let x = ((exp - (-4)) / 4) * w;
+                    chartCtx.beginPath(); chartCtx.moveTo(x, 0); chartCtx.lineTo(x, h); chartCtx.stroke();
+                }
+
+                historyLog.forEach(data => {
+                    let plotX = 0;
+                    if (data.p > 0) { plotX = Math.max(0, Math.min(((Math.log10(data.p) - (-4)) / 4) * w, w)); }
+                    let y_L = h - padY - (Math.max(0, Math.min(data.normL, 1.0)) * (h - padY*2));
+                    let y_C = h - padY - (Math.max(0, Math.min(data.normC, 1.0)) * (h - padY*2));
+
+                    chartCtx.fillStyle = 'rgba(129, 140, 248, 0.8)';
+                    chartCtx.beginPath(); chartCtx.arc(plotX, y_L, 2, 0, Math.PI*2); chartCtx.fill();
+                    chartCtx.fillStyle = 'rgba(52, 211, 153, 0.8)';
+                    chartCtx.beginPath(); chartCtx.arc(plotX, y_C, 2, 0, Math.PI*2); chartCtx.fill();
+                });
+            }
+
+            // --- The FIXED BFS Physics Engine ---
+            function updatePulse() {
+                if (!isBroadcasting) return;
+
+                // 1. Find nodes that are actively firing THIS tick
+                let spreadingNodes = [];
+                for(let i=0; i<nodes.length; i++) {
+                    if (nodes[i].signal === 1.0) {
+                        spreadingNodes.push(i);
+                        // Downgrade to "Recovered/Trail" immediately so it doesn't fire again
+                        nodes[i].signal = 0.4; 
+                    }
+                }
+
+                // 2. Infect susceptible neighbors
+                let newInfections = 0;
+                spreadingNodes.forEach(i => {
+                    Array.from(adjacency[i]).forEach(nIdx => {
+                        // Only infect if it hasn't been touched yet
+                        if (!nodes[nIdx].isInfected && nodes[nIdx].signal === 0) {
+                            nodes[nIdx].signal = 1.0; // Set to fire NEXT tick
+                            nodes[nIdx].isInfected = true;
+                            newInfections++;
+                        }
+                    });
+                });
+
+                // 3. Count coverage
+                let activeNodesCount = nodes.filter(n => n.isInfected).length;
+                broadcastSteps++;
+                coverage = (activeNodesCount / nodes.length) * 100;
+                
+                document.getElementById('stepCounter').innerText = broadcastSteps;
+                document.getElementById('coverageText').innerText = Math.round(coverage) + '%';
+                document.getElementById('coverageBar').style.width = coverage + '%';
+
+                // Stop condition: No new infections this tick
+                if (newInfections === 0 || coverage >= 100) {
+                    isBroadcasting = false;
+                    document.getElementById('statusText').innerText = coverage >= 100 ? '100% Coverage Reached!' : 'Network Isolated (Stopped)';
+                    document.getElementById('statusText').style.color = coverage >= 100 ? '#10b981' : '#f59e0b'; // Emerald or Amber
+                }
+            }
+
+            function drawMainCanvas() {
+                ctx.fillStyle = '#030712'; // Solid dark background for clear visuals
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                edges.forEach(edge => {
+                    let u = nodes[edge.source], v = nodes[edge.target];
+                    let isActive = (u.signal === 1.0 || v.signal === 1.0); // Bright wave front
+                    let isCovered = (u.isInfected && v.isInfected); // Trail
+                    
+                    if (edge.isRewired) {
+                        ctx.strokeStyle = isActive ? `rgba(244, 63, 94, 0.9)` : (isCovered ? `rgba(244, 63, 94, 0.3)` : `rgba(244, 63, 94, 0.1)`);
+                        ctx.lineWidth = isActive ? 2.5 : 1.0;
+                    } else {
+                        ctx.strokeStyle = isActive ? `rgba(99, 102, 241, 0.9)` : (isCovered ? `rgba(99, 102, 241, 0.3)` : `rgba(51, 65, 85, 0.3)`);
+                        ctx.lineWidth = isActive ? 2.0 : 0.8;
+                    }
+                    ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.lineTo(v.x, v.y); ctx.stroke();
+                });
+
+                nodes.forEach(node => {
+                    let r = node.signal === 1.0 ? 6 : 3;
+                    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+                    
+                    if (node.signal === 1.0) {
+                        // Firing NOW
+                        ctx.fillStyle = `rgba(244, 63, 94, 1.0)`;
+                        ctx.shadowColor = '#f43f5e'; ctx.shadowBlur = 20;
+                    } else if (node.isInfected) {
+                        // Already fired (Trail)
+                        ctx.fillStyle = `rgba(159, 18, 57, 0.6)`;
+                        ctx.shadowBlur = 0;
+                    } else {
+                        // Uninfected
+                        ctx.fillStyle = '#1e293b'; 
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.fill();
+                });
+                ctx.shadowBlur = 0;
+            }
+
+            // --- The Ticking Loop ---
+            function loop(timestamp) {
+                if (!lastTickTime) lastTickTime = timestamp;
+                
+                if (timestamp - lastTickTime >= TICK_INTERVAL) {
+                    if (isBroadcasting) updatePulse();
+                    drawMainCanvas(); // Always redraw so visuals update immediately
+                    lastTickTime = timestamp;
+                }
+                
+                requestAnimationFrame(loop);
+            }
+
+            // --- Event Listeners Integration ---
+            window.addEventListener('resize', resize);
+            document.getElementById('regenBtn').addEventListener('click', generateNetwork);
+            
+            document.getElementById('pulseBtn').addEventListener('click', () => {
+                if (nodes.length > 0) {
+                    resetTracker();
+                    let startIdx = Math.floor(Math.random() * nodes.length);
+                    nodes[startIdx].signal = 1.0; 
+                    nodes[startIdx].isInfected = true; // Mark instantly so coverage starts > 0
+                    
+                    isBroadcasting = true;
+                    document.getElementById('statusText').innerText = 'Broadcasting Signal... (0.1s / step)';
+                    document.getElementById('statusText').style.color = '#f43f5e'; 
+                    drawMainCanvas(); // Force instant visual update
+                }
+            });
+
+            [inputN, inputK, inputPLog].forEach(input => {
+                input.addEventListener('input', (e) => {
+                    if (e.target.id !== 'param-P-log') {
+                        let displayId = e.target.id.split('-')[1].toLowerCase() + 'Val';
+                        document.getElementById(displayId).innerText = e.target.value;
+                    }
+                    if(e.target.id === 'param-N' || e.target.id === 'param-K') {
+                        historyLog = []; calculateBoundaries();
+                    }
+                    generateNetwork(); 
+                });
+            });
+
+            resize();
+            requestAnimationFrame(loop);
+        };
+    </script>
+</body>
+</html>
