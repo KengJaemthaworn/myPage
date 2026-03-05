@@ -24,7 +24,6 @@
 
     <!-- The actual React App code -->
     <script type="text/babel">
-        // 1. Extract React hooks from the global window object
         const { useState, useRef, useEffect, useMemo } = React;
 
         // --- Configuration & Maps ---
@@ -53,7 +52,6 @@
         const NODE_SHAPES = ['circle', 'rectangle', 'triangle', 'diamond'];
         const EDGE_STYLES = ['normal', 'dot', 'arrow normal', 'arrow dot'];
 
-        // 2. Define the main App component
         function App() {
           const [nodes, setNodes] = useState([]);
           const [edges, setEdges] = useState([]);
@@ -326,22 +324,68 @@
           };
 
           const generateRCode = () => {
-            if (nodes.length === 0) return "# Stamp nodes to generate code...";
+            if (nodes.length === 0) return "# Stamp nodes and draw edges to generate code...";
+            
             let code = `library(igraph)\n\n`;
-            code += `# 1. Define Adjacency Matrix directly from your visual sandbox\n`;
+            code += `# ==========================================================================\n`;
+            code += `# SET YOUR OUTPUT DIRECTORY HERE\n`;
+            code += `# Note: Change this to your actual folder path. Use forward slashes (/)!\n`;
+            code += `out_dir <- "C:/YOUR_PATH_HERE/Network_Output" \n`;
+            code += `if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)\n`;
+            code += `# ==========================================================================\n\n`;
+            
+            code += `# 1. Define Adjacency Matrix (directly from your UI sandbox)\n`;
             code += `adj_matrix <- matrix(c(\n`;
             const rows = adjMatrix.map(row => `  ${row.join(', ')}`);
             code += rows.join(',\n') + `\n), nrow=${nodes.length}, byrow=TRUE)\n\n`;
             code += `rownames(adj_matrix) <- paste0("V", c(${nodes.map(n=>n.id).join(',')}))\n`;
             code += `colnames(adj_matrix) <- paste0("V", c(${nodes.map(n=>n.id).join(',')}))\n\n`;
+            
+            code += `# Auto-Export 1: Save Adjacency Matrix\n`;
+            code += `write.csv(adj_matrix, file=file.path(out_dir, "adjacency_matrix.csv"))\n\n`;
+
             code += `# 2. Create Graph from Matrix\n`;
-            code += `g <- graph_from_adjacency_matrix(adj_matrix, mode="directed", weighted=TRUE, diag=FALSE)\n\n`;
+            const isDirected = edges.some(e => e.style.includes('arrow')) ? '"directed"' : '"undirected"';
+            code += `g <- graph_from_adjacency_matrix(adj_matrix, mode=${isDirected}, weighted=TRUE, diag=FALSE)\n\n`;
+            
             code += `# 3. Apply Node Aesthetics\n`;
             code += `V(g)$color <- c(${nodes.map(n => `"${n.color}"`).join(', ')})\n`;
             const igraphShapes = nodes.map(n => n.shape === 'circle' ? '"circle"' : n.shape === 'rectangle' ? '"square"' : '"csquare"');
             code += `V(g)$shape <- c(${igraphShapes.join(', ')})\n\n`;
-            code += `# Plotting\n`;
-            code += `plot(g, edge.width=abs(E(g)$weight)*5, edge.color=ifelse(E(g)$weight < 0, "red", "blue"), vertex.size=25, main="NSS/GXS Simulation")`;
+
+            code += `# 4. Calculate Rigorous Centrality Metrics\n`;
+            code += `# CRITICAL: igraph fails at shortest paths (Betweenness/Closeness) if weights are negative.\n`;
+            code += `# We transform your correlation weights (-1 to 1) into distances (Distance = 1 - Correlation).\n`;
+            code += `# High positive correlation (+1) = Distance 0. Strong negative correlation (-1) = Distance 2.\n`;
+            code += `dist_weights <- 1 - E(g)$weight\n\n`;
+
+            code += `centrality_df <- data.frame(\n`;
+            code += `  Node = V(g)$name,\n`;
+            code += `  In_Degree = degree(g, mode="in"),\n`;
+            code += `  Out_Degree = degree(g, mode="out"),\n`;
+            code += `  Total_Degree = degree(g, mode="all"),\n`;
+            code += `  Closeness = closeness(g, weights = dist_weights, normalized = TRUE),\n`;
+            code += `  Betweenness = betweenness(g, weights = dist_weights, normalized = TRUE),\n`;
+            code += `  Eigenvector = eigen_centrality(g, directed = ${isDirected === '"directed"' ? 'TRUE' : 'FALSE'}, weights = abs(E(g)$weight))$vector,\n`;
+            code += `  Clustering = transitivity(g, type="local", isolates="zero")\n`;
+            code += `)\n\n`;
+
+            code += `# Auto-Export 2: Save Centrality Table\n`;
+            code += `write.csv(centrality_df, file=file.path(out_dir, "centrality_metrics.csv"), row.names=FALSE)\n\n`;
+
+            code += `# 5. Export Network Figure (.PNG)\n`;
+            code += `png(file.path(out_dir, "network_simulation.png"), width=1200, height=900, res=150)\n`;
+            code += `plot(g, \n`;
+            code += `     edge.width=abs(E(g)$weight)*5, \n`;
+            code += `     edge.color=ifelse(E(g)$weight < 0, "red", "blue"), \n`;
+            code += `     vertex.size=25, \n`;
+            code += `     main="NSS/GXS Simulation")\n`;
+            code += `dev.off()\n\n`;
+            
+            code += `cat("\\n=== SUCCESS! ===\\n")\n`;
+            code += `cat("1. Figure (PNG)\\n2. Adjacency Matrix (CSV)\\n3. Centrality Metrics (CSV)\\n")\n`;
+            code += `cat("All saved securely to:", out_dir, "\\n")\n`;
+
             return code;
           };
 
@@ -521,10 +565,10 @@
                     <i className="fas fa-table mr-2"></i> Adjacency Matrix
                   </button>
                   <button onClick={() => setBottomTab('centrality')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'centrality' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}>
-                    <i className="fas fa-chart-line mr-2"></i> Centrality Metrics
+                    <i className="fas fa-chart-line mr-2"></i> Centrality (JS Approx)
                   </button>
                   <button onClick={() => setBottomTab('rcode')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'rcode' ? 'bg-slate-900 text-emerald-400 border-b-2 border-emerald-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
-                    <i className="fas fa-code mr-2"></i> R Code Export
+                    <i className="fas fa-code mr-2"></i> R Code (Rigorous Export)
                   </button>
                 </div>
 
@@ -592,9 +636,9 @@
                             <i className="fas fa-exclamation-circle mr-2 mt-0.5 flex-shrink-0"></i>
                             <div className="flex-1">
                               <p className="mb-1">
-                                <strong>Topological Approximation:</strong> Calculations here run live in JS and treat all edges as <em>unweighted topology</em> (Distance = 1) to avoid math errors from negative correlations. 
-                                Graph is treated as <strong>{edges.some(e => e.style.includes('arrow')) ? 'Directed/Mixed' : 'Undirected'}</strong> based on your drawn arrows. 
-                                For rigorous weighted metrics, please use the generated R code.
+                                <strong>Topological Approximation:</strong> Calculations here run live in JS and treat all edges as <em>unweighted topology</em> (Distance = 1). 
+                                Graph is treated as <strong>{edges.some(e => e.style.includes('arrow')) ? 'Directed/Mixed' : 'Undirected'}</strong>. 
+                                For rigorous weighted metrics to use in your research, go to the <strong>R Code Export</strong> tab.
                               </p>
                             </div>
                             <button onClick={exportCentralityCSV} className="ml-4 flex-shrink-0 text-xs bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded transition-colors flex items-center border border-indigo-200 font-medium">
@@ -646,13 +690,23 @@
 
                   {/* R Code View */}
                   {bottomTab === 'rcode' && (
-                    <div className="absolute inset-0 bg-slate-900 p-4 overflow-auto">
-                      <button onClick={() => navigator.clipboard.writeText(generateRCode())} className="absolute top-4 right-4 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors flex items-center border border-slate-700">
-                        <i className="fas fa-copy mr-1"></i> Copy R Code
-                      </button>
-                      <pre className="font-mono text-xs text-emerald-300 leading-relaxed pr-24 whitespace-pre-wrap">
-                        {generateRCode()}
-                      </pre>
+                    <div className="absolute inset-0 bg-slate-900 p-4 flex flex-col overflow-hidden">
+                      <div className="mb-4 bg-emerald-950 border border-emerald-800 text-emerald-300 p-3 rounded-md text-xs flex items-start shadow-sm shrink-0">
+                        <i className="fas fa-info-circle mr-2 mt-0.5 flex-shrink-0"></i>
+                        <div className="flex-1">
+                          <p className="mb-1 text-emerald-100">
+                            <strong>JS is for visual layout, R is for rigorous math.</strong> Copy and run this script in RStudio. It will automatically generate and save <strong>1. The PNG figure, 2. Adjacency Matrix (CSV), and 3. Full Centrality Metrics (CSV)</strong> to your specified folder path.
+                          </p>
+                        </div>
+                        <button onClick={() => navigator.clipboard.writeText(generateRCode())} className="ml-4 flex-shrink-0 text-xs bg-emerald-700 text-white hover:bg-emerald-600 px-4 py-2 rounded transition-colors flex items-center shadow font-bold">
+                          <i className="fas fa-copy mr-2"></i> Copy R Script
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-auto bg-slate-950 p-4 rounded border border-slate-800">
+                        <pre className="font-mono text-xs text-emerald-400 leading-relaxed whitespace-pre-wrap">
+                          {generateRCode()}
+                        </pre>
+                      </div>
                     </div>
                   )}
 
@@ -662,7 +716,6 @@
           );
         }
 
-        // 3. Mount the App to the DOM
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
