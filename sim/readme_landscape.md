@@ -1,3 +1,5 @@
+*Acknowledge this is AI generated content*
+
 # 📖 The In Silico Laboratory: Simulating Cell States
 
 Welcome to the sandbox.
