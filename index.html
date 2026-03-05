@@ -87,8 +87,9 @@
                 // --- Grouped Simulators under a main "Simulators" dropdown ---
                 {
                     label: "Simulators",
-                    { id: "code", label: "Introduction", file: "sim/code.md" },
                     subpages: [
+                        // FIX: Moved this item INTO the subpages array and gave it a unique ID
+                        { id: "sim_intro", label: "Introduction", file: "sim/code.md" }, 
                         { 
                             label: "Landscape", 
                             subpages: [
