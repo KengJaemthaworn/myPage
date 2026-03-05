@@ -62,6 +62,10 @@
 
           const [dragState, setDragState] = useState({ id: null, isDragging: false, startX: 0, startY: 0 });
           const [bottomTab, setBottomTab] = useState('matrix'); 
+          
+          // NEW STATE: For handling modal image exports safely
+          const [exportedImg, setExportedImg] = useState({ dataUrl: null, type: null });
+          
           const svgRef = useRef(null);
 
           // --- Core Interactions ---
@@ -293,7 +297,8 @@
           const centralityData = useMemo(() => getCentralityMetrics(), [nodes, edges, adjMatrix]);
 
           // --- Exports (CSV, R, Images) ---
-          const exportMatrixCSV = () => {
+          const exportMatrixCSV = (e) => {
+            if (e) e.preventDefault();
             if (nodes.length === 0) return;
             let csv = "Node," + nodes.map(n => `V${n.id}`).join(",") + "\n";
             adjMatrix.forEach((row, i) => {
@@ -304,11 +309,14 @@
             const link = document.createElement("a");
             link.href = url;
             link.download = "adjacency_matrix.csv";
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
             URL.revokeObjectURL(url);
           };
 
-          const exportCentralityCSV = () => {
+          const exportCentralityCSV = (e) => {
+            if (e) e.preventDefault();
             if (nodes.length === 0) return;
             let csv = "Node,In-Deg,Out-Deg,Total Deg,Closeness,Betweenness,Eigenvector,Clustering\n";
             centralityData.forEach(node => {
@@ -319,7 +327,9 @@
             const link = document.createElement("a");
             link.href = url;
             link.download = "centrality_metrics.csv";
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
             URL.revokeObjectURL(url);
           };
 
@@ -389,30 +399,70 @@
             return code;
           };
 
-          const exportSVG = () => {
+          // --- Safe Image Exporters (Modal Based) ---
+          const exportSVG = (e) => {
+            if (e) e.preventDefault();
             if (!svgRef.current) return;
             const svgData = new XMLSerializer().serializeToString(svgRef.current);
-            const svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-            const blob = new Blob([svgWithXmlns], { type: "image/svg+xml;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a"); link.href = url; link.download = "network_simulation.svg"; link.click(); URL.revokeObjectURL(url);
+            let svgWithXmlns = svgData;
+            if (!svgData.includes('xmlns=')) {
+                svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+            
+            // Generate Data URI safely
+            const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgWithXmlns);
+            setExportedImg({ dataUrl, type: 'svg' });
           };
 
-          const exportPNG = () => {
+          const exportPNG = (e) => {
+            if (e) e.preventDefault();
             if (!svgRef.current) return;
             const svgEl = svgRef.current;
-            const width = svgEl.clientWidth || 800; const height = svgEl.clientHeight || 600;
-            svgEl.setAttribute('width', width); svgEl.setAttribute('height', height);
-            const svgData = new XMLSerializer().serializeToString(svgEl);
-            const svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-            svgEl.removeAttribute('width'); svgEl.removeAttribute('height');
-            const img = new Image(); img.crossOrigin = "anonymous";
+            
+            // Extract dimensions safely
+            const width = svgEl.clientWidth || 800; 
+            const height = svgEl.clientHeight || 600;
+            
+            // Clone node to prevent mutating the live DOM
+            const clone = svgEl.cloneNode(true);
+            clone.setAttribute('width', width); 
+            clone.setAttribute('height', height);
+            
+            let svgData = new XMLSerializer().serializeToString(clone);
+            
+            if (!svgData.includes('xmlns=')) {
+                svgData = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+            
+            // Use Data URI to avoid cross-origin Blob strictness in iframes
+            const svgDataUri = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+            
+            const img = new Image();
+            
             img.onload = () => {
-              const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height; const ctx = canvas.getContext("2d");
-              ctx.fillStyle = "#f8fafc"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0);
-              const link = document.createElement("a"); link.href = canvas.toDataURL("image/png"); link.download = "network_simulation.png"; link.click();
+              try {
+                  const canvas = document.createElement("canvas"); 
+                  canvas.width = width; 
+                  canvas.height = height; 
+                  const ctx = canvas.getContext("2d");
+                  
+                  // Fill background to avoid transparent artifacts
+                  ctx.fillStyle = "#f8fafc"; 
+                  ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                  
+                  // Draw SVG
+                  ctx.drawImage(img, 0, 0);
+                  
+                  const dataUrl = canvas.toDataURL("image/png");
+                  setExportedImg({ dataUrl, type: 'png' });
+              } catch (err) {
+                  console.error("Canvas export blocked by browser security:", err);
+                  alert("Cannot render PNG. Your browser blocked the canvas export.");
+              }
             };
-            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgWithXmlns)));
+            
+            img.onerror = (err) => console.error("Error drawing SVG to image node:", err);
+            img.src = svgDataUri;
           };
 
           const renderShape = (x, y, shape, color, isSelected) => {
@@ -464,12 +514,12 @@
                     <h3 className="text-sm font-bold text-slate-700 mb-2">Node Style</h3>
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       {NODE_SHAPES.map(s => (
-                        <button key={s} onClick={() => updateSelectedOrBrush('node', 'shape', s)} className={`px-2 py-1.5 text-xs rounded border capitalize ${activeNodeProps?.shape === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>{s}</button>
+                        <button key={s} onClick={(e) => { e.preventDefault(); updateSelectedOrBrush('node', 'shape', s); }} className={`px-2 py-1.5 text-xs rounded border capitalize ${activeNodeProps?.shape === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>{s}</button>
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {Object.keys(NODE_COLORS).map(c => (
-                        <button key={c} onClick={() => updateSelectedOrBrush('node', 'color', c)} title={c} className={`w-8 h-8 rounded-full border-2 ${activeNodeProps?.color === c ? 'border-slate-800 scale-110' : 'border-slate-200'}`} style={{ backgroundColor: NODE_COLORS[c], borderColor: NODE_BORDER_COLORS[c] }}/>
+                        <button key={c} onClick={(e) => { e.preventDefault(); updateSelectedOrBrush('node', 'color', c); }} title={c} className={`w-8 h-8 rounded-full border-2 ${activeNodeProps?.color === c ? 'border-slate-800 scale-110' : 'border-slate-200'}`} style={{ backgroundColor: NODE_COLORS[c], borderColor: NODE_BORDER_COLORS[c] }}/>
                       ))}
                     </div>
                   </div>
@@ -480,7 +530,7 @@
                       <label className="text-xs font-semibold text-slate-500 block mb-1">Color / Weight mapping:</label>
                       <div className="flex flex-col gap-1">
                         {Object.keys(EDGE_COLORS).map(c => (
-                          <button key={c} onClick={() => updateSelectedOrBrush('edge', 'color', c)} className={`flex items-center text-xs px-2 py-1 rounded border ${activeEdgeProps?.color === c ? 'bg-slate-100 border-slate-400 font-bold' : 'border-transparent hover:bg-slate-50'}`}>
+                          <button key={c} onClick={(e) => { e.preventDefault(); updateSelectedOrBrush('edge', 'color', c); }} className={`flex items-center text-xs px-2 py-1 rounded border ${activeEdgeProps?.color === c ? 'bg-slate-100 border-slate-400 font-bold' : 'border-transparent hover:bg-slate-50'}`}>
                             <span className="w-4 h-4 rounded-sm border border-slate-300 mr-2 inline-block" style={{ backgroundColor: EDGE_COLORS[c] }}></span>
                             <span className="capitalize flex-1 text-left">{c}</span>
                             <span className="text-slate-500 font-mono">{WEIGHT_MAP[c] > 0 ? `+${WEIGHT_MAP[c]}` : WEIGHT_MAP[c]}</span>
@@ -490,7 +540,7 @@
                     </div>
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       {EDGE_STYLES.map(s => (
-                        <button key={s} onClick={() => updateSelectedOrBrush('edge', 'style', s)} className={`px-2 py-1.5 text-xs rounded border capitalize ${activeEdgeProps?.style === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>{s}</button>
+                        <button key={s} onClick={(e) => { e.preventDefault(); updateSelectedOrBrush('edge', 'style', s); }} className={`px-2 py-1.5 text-xs rounded border capitalize ${activeEdgeProps?.style === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>{s}</button>
                       ))}
                     </div>
                     <div>
@@ -512,7 +562,7 @@
                       </button>
                     </div>
                     <div className="bg-white/90 backdrop-blur border border-slate-200 p-1.5 rounded-lg flex gap-1 shadow-sm pointer-events-auto">
-                      <button onClick={clearNetwork} className="px-2 py-1 text-xs flex items-center text-red-600 hover:bg-red-50 rounded font-medium transition">
+                      <button onClick={(e) => { e.preventDefault(); clearNetwork(); }} className="px-2 py-1 text-xs flex items-center text-red-600 hover:bg-red-50 rounded font-medium transition">
                         <i className="fas fa-trash-alt mr-1"></i> Clear All
                       </button>
                     </div>
@@ -561,13 +611,13 @@
                 
                 {/* Tabs */}
                 <div className="flex border-b border-slate-200 bg-slate-50">
-                  <button onClick={() => setBottomTab('matrix')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'matrix' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}>
+                  <button onClick={(e) => { e.preventDefault(); setBottomTab('matrix'); }} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'matrix' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}>
                     <i className="fas fa-table mr-2"></i> Adjacency Matrix
                   </button>
-                  <button onClick={() => setBottomTab('centrality')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'centrality' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}>
+                  <button onClick={(e) => { e.preventDefault(); setBottomTab('centrality'); }} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'centrality' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}>
                     <i className="fas fa-chart-line mr-2"></i> Centrality (JS Approx)
                   </button>
-                  <button onClick={() => setBottomTab('rcode')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'rcode' ? 'bg-slate-900 text-emerald-400 border-b-2 border-emerald-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                  <button onClick={(e) => { e.preventDefault(); setBottomTab('rcode'); }} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'rcode' ? 'bg-slate-900 text-emerald-400 border-b-2 border-emerald-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
                     <i className="fas fa-code mr-2"></i> R Code (Rigorous Export)
                   </button>
                 </div>
@@ -698,7 +748,7 @@
                             <strong>JS is for visual layout, R is for rigorous math.</strong> Copy and run this script in RStudio. It will automatically generate and save <strong>1. The PNG figure, 2. Adjacency Matrix (CSV), and 3. Full Centrality Metrics (CSV)</strong> to your specified folder path.
                           </p>
                         </div>
-                        <button onClick={() => navigator.clipboard.writeText(generateRCode())} className="ml-4 flex-shrink-0 text-xs bg-emerald-700 text-white hover:bg-emerald-600 px-4 py-2 rounded transition-colors flex items-center shadow font-bold">
+                        <button onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(generateRCode()); }} className="ml-4 flex-shrink-0 text-xs bg-emerald-700 text-white hover:bg-emerald-600 px-4 py-2 rounded transition-colors flex items-center shadow font-bold">
                           <i className="fas fa-copy mr-2"></i> Copy R Script
                         </button>
                       </div>
@@ -712,6 +762,38 @@
 
                 </div>
               </div>
+
+              {/* NEW: Modal Overlay for Image Export */}
+              {exportedImg.dataUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-75 p-4 backdrop-blur-sm">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                      <h2 className="text-xl font-bold text-slate-800">
+                        <i className={`fas fa-${exportedImg.type === 'png' ? 'image' : 'file-code'} mr-2 text-indigo-600`}></i>
+                        Exported {exportedImg.type.toUpperCase()}
+                      </h2>
+                      <button onClick={() => setExportedImg({dataUrl: null, type: null})} className="text-slate-400 hover:text-red-500 transition-colors">
+                        <i className="fas fa-times text-2xl"></i>
+                      </button>
+                    </div>
+                    
+                    <div className="bg-slate-50 rounded-lg border border-slate-200 flex-1 overflow-auto flex items-center justify-center p-4 min-h-[300px]">
+                      <img src={exportedImg.dataUrl} alt="Exported Network" className="max-w-full max-h-[50vh] object-contain shadow-sm border border-slate-300 bg-white" />
+                    </div>
+                    
+                    <div className="mt-6 flex flex-col items-center">
+                      <a href={exportedImg.dataUrl} download={`network_simulation.${exportedImg.type}`} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition-colors flex items-center mb-3">
+                        <i className="fas fa-download mr-2"></i> Download {exportedImg.type.toUpperCase()} File
+                      </a>
+                      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-xs flex items-center max-w-lg">
+                        <i className="fas fa-info-circle mr-2 text-amber-500"></i>
+                        <span><strong>Troubleshooting:</strong> If the download button doesn't work (due to browser security), simply <strong>right-click the image above</strong> and select "Save image as...".</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           );
         }
