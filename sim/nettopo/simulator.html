@@ -1,0 +1,473 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { PlusCircle, Trash2, Code, Settings2, Image as ImageIcon, FileCode2, Table2 } from 'lucide-react';
+
+// --- Configuration & Maps ---
+const NODE_COLORS = {
+  red: '#ef4444', orange: '#f97316', yellow: '#eab308', green: '#22c55e',
+  blue: '#3b82f6', purple: '#a855f7', black: '#1e293b', white: '#ffffff'
+};
+
+const EDGE_COLORS = {
+  'dark red': '#7f1d1d', red: '#ef4444', 'light red': '#fca5a5',
+  white: '#e2e8f0', // using a slight off-white/gray so it's visible on canvas
+  'light blue': '#bae6fd', blue: '#3b82f6', 'dark blue': '#1e3a8a'
+};
+
+const WEIGHT_MAP = {
+  'dark red': -1, red: -0.7, 'light red': -0.3,
+  white: 0,
+  'light blue': 0.3, blue: 0.7, 'dark blue': 1
+};
+
+const NODE_SHAPES = ['circle', 'rectangle', 'triangle', 'diamond'];
+const EDGE_STYLES = ['normal', 'dot', 'arrow normal', 'arrow dot'];
+
+export default function App() {
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
+  const [selection, setSelection] = useState({ type: null, id: null });
+  
+  const [defaultNode, setDefaultNode] = useState({ shape: 'circle', color: 'blue' });
+  const [defaultEdge, setDefaultEdge] = useState({ thickness: 3, style: 'normal', color: 'dark blue' });
+
+  const [bottomTab, setBottomTab] = useState('matrix'); // 'matrix' or 'rcode'
+  const svgRef = useRef(null);
+
+  // --- Core Interactions ---
+  const handleSvgClick = (e) => {
+    if (e.target.tagName === 'svg') {
+      const rect = svgRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const newNode = {
+        id: nodes.length + 1,
+        x, y,
+        label: `V${nodes.length + 1}`,
+        shape: defaultNode.shape,
+        color: defaultNode.color
+      };
+      
+      setNodes([...nodes, newNode]);
+      setSelection({ type: null, id: null });
+    }
+  };
+
+  const handleNodeClick = (e, nodeId) => {
+    e.stopPropagation();
+    if (selection.type === null) {
+      setSelection({ type: 'node', id: nodeId });
+    } else if (selection.type === 'node' && selection.id !== nodeId) {
+      const edgeId = `e-${selection.id}-${nodeId}`;
+      const reverseEdgeId = `e-${nodeId}-${selection.id}`;
+      
+      // Update if edge exists, otherwise create new
+      const existingEdgeIndex = edges.findIndex(e => e.id === edgeId || e.id === reverseEdgeId);
+      
+      if (existingEdgeIndex >= 0) {
+        const newEdges = [...edges];
+        newEdges[existingEdgeIndex] = {
+          ...newEdges[existingEdgeIndex],
+          source: selection.id, // Update directionality based on new click
+          target: nodeId,
+          thickness: defaultEdge.thickness,
+          style: defaultEdge.style,
+          color: defaultEdge.color
+        };
+        setEdges(newEdges);
+      } else {
+        setEdges([...edges, { 
+          id: edgeId, source: selection.id, target: nodeId,
+          thickness: defaultEdge.thickness, style: defaultEdge.style, color: defaultEdge.color
+        }]);
+      }
+      setSelection({ type: null, id: null });
+    } else if (selection.type === 'node' && selection.id === nodeId) {
+      setSelection({ type: null, id: null });
+    }
+  };
+
+  const handleEdgeClick = (e, edgeId) => {
+    e.stopPropagation();
+    setSelection({ type: 'edge', id: edgeId });
+  };
+
+  const clearNetwork = () => {
+    setNodes([]);
+    setEdges([]);
+    setSelection({ type: null, id: null });
+  };
+
+  const updateSelectedOrBrush = (type, key, value) => {
+    if (selection.type === 'node' && type === 'node') {
+      setNodes(nodes.map(n => n.id === selection.id ? { ...n, [key]: value } : n));
+    } else if (selection.type === 'edge' && type === 'edge') {
+      setEdges(edges.map(e => e.id === selection.id ? { ...e, [key]: value } : e));
+    } else {
+      if (type === 'node') setDefaultNode(prev => ({ ...prev, [key]: value }));
+      if (type === 'edge') setDefaultEdge(prev => ({ ...prev, [key]: value }));
+    }
+  };
+
+  const currentProps = () => {
+    if (selection.type === 'node') return { node: nodes.find(n => n.id === selection.id), edge: defaultEdge, editing: 'node' };
+    if (selection.type === 'edge') return { node: defaultNode, edge: edges.find(e => e.id === selection.id), editing: 'edge' };
+    return { node: defaultNode, edge: defaultEdge, editing: null };
+  };
+
+  const { node: activeNodeProps, edge: activeEdgeProps, editing } = currentProps();
+
+  // --- Calculations & Exports ---
+  const getAdjacencyMatrix = () => {
+    const size = nodes.length;
+    let matrix = Array(size).fill(0).map(() => Array(size).fill(0));
+    
+    // Map node IDs to matrix indices (0 to size-1)
+    const idToIndex = {};
+    nodes.forEach((n, i) => { idToIndex[n.id] = i; });
+
+    edges.forEach(edge => {
+      const u = idToIndex[edge.source];
+      const v = idToIndex[edge.target];
+      if (u === undefined || v === undefined) return;
+
+      const weight = WEIGHT_MAP[edge.color];
+      const isDirected = edge.style.includes('arrow');
+
+      matrix[u][v] = weight;
+      if (!isDirected) {
+        matrix[v][u] = weight; // Symmetrical if no arrow
+      }
+    });
+    return matrix;
+  };
+
+  const generateRCode = () => {
+    if (nodes.length === 0) return "# Stamp nodes to generate code...";
+    const matrix = getAdjacencyMatrix();
+    
+    let code = `library(igraph)\n\n`;
+    code += `# 1. Define Adjacency Matrix directly from your visual sandbox\n`;
+    code += `adj_matrix <- matrix(c(\n`;
+    
+    // R matrices are filled by column by default, so we transpose our output or use byrow=TRUE
+    const rows = matrix.map(row => `  ${row.join(', ')}`);
+    code += rows.join(',\n');
+    code += `\n), nrow=${nodes.length}, byrow=TRUE)\n\n`;
+    
+    code += `rownames(adj_matrix) <- paste0("V", 1:${nodes.length})\n`;
+    code += `colnames(adj_matrix) <- paste0("V", 1:${nodes.length})\n\n`;
+    
+    code += `# 2. Create Graph from Matrix\n`;
+    code += `# Using 'directed' mode to respect your arrows. Symmetrical edges become reciprocal.\n`;
+    code += `g <- graph_from_adjacency_matrix(adj_matrix, mode="directed", weighted=TRUE, diag=FALSE)\n\n`;
+    
+    code += `# 3. Apply Node Aesthetics\n`;
+    code += `V(g)$color <- c(${nodes.map(n => `"${n.color}"`).join(', ')})\n`;
+    
+    const igraphShapes = nodes.map(n => {
+      if (n.shape === 'circle') return '"circle"';
+      if (n.shape === 'rectangle') return '"square"';
+      return '"csquare"';
+    });
+    code += `V(g)$shape <- c(${igraphShapes.join(', ')})\n\n`;
+    
+    code += `# Plotting\n`;
+    code += `plot(g, edge.width=abs(E(g)$weight)*5, \n     edge.color=ifelse(E(g)$weight < 0, "red", "blue"),\n     vertex.size=25, main="NSS/GXS Simulation")`;
+    return code;
+  };
+
+  const exportSVG = () => {
+    if (!svgRef.current) return;
+    const svgData = new XMLSerializer().serializeToString(svgRef.current);
+    // Add xmlns if missing for valid standalone SVG
+    const svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    const blob = new Blob([svgWithXmlns], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "network_simulation.svg";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPNG = () => {
+    if (!svgRef.current) return;
+    const svgData = new XMLSerializer().serializeToString(svgRef.current);
+    const svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    const img = new Image();
+    const blob = new Blob([svgWithXmlns], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = svgRef.current.clientWidth;
+      canvas.height = svgRef.current.clientHeight;
+      const ctx = canvas.getContext("2d");
+      
+      // Draw white background
+      ctx.fillStyle = "#f8fafc"; 
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Draw SVG
+      ctx.drawImage(img, 0, 0);
+      
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = "network_simulation.png";
+      link.click();
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
+  // --- Render Helpers ---
+  const renderShape = (x, y, shape, color, isSelected) => {
+    const fill = NODE_COLORS[color] || color;
+    const stroke = isSelected ? '#000000' : '#475569';
+    const strokeW = isSelected ? 4 : 2;
+    const size = 20;
+
+    switch (shape) {
+      case 'rectangle': return <rect x={x - size} y={y - size} width={size * 2} height={size * 2} fill={fill} stroke={stroke} strokeWidth={strokeW} rx="4" />;
+      case 'triangle': return <polygon points={`${x},${y - size - 4} ${x - size - 2},${y + size - 2} ${x + size + 2},${y + size - 2}`} fill={fill} stroke={stroke} strokeWidth={strokeW} strokeLinejoin="round" />;
+      case 'diamond': return <polygon points={`${x},${y - size - 4} ${x - size - 4},${y} ${x},${y + size + 4} ${x + size + 4},${y}`} fill={fill} stroke={stroke} strokeWidth={strokeW} strokeLinejoin="round" />;
+      case 'circle': default: return <circle cx={x} cy={y} r={size} fill={fill} stroke={stroke} strokeWidth={strokeW} />;
+    }
+  };
+
+  const adjMatrix = getAdjacencyMatrix();
+
+  return (
+    <div className="flex flex-col min-h-screen bg-slate-50 font-sans p-4">
+      
+      <div className="w-full mb-4">
+        <h1 className="text-2xl font-bold text-slate-800">State Transition Simulator Pro</h1>
+        <p className="text-slate-600 text-sm mt-1">
+          Draw your NSS/GXS hypotheses. Arrows create asymmetrical matrices. Colors determine edge weights (-1 to 1).
+        </p>
+      </div>
+
+      <div className="w-full flex flex-col lg:flex-row gap-4 h-[60vh] mb-4">
+        
+        {/* Left Panel: Tools */}
+        <div className="w-full lg:w-72 bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col overflow-y-auto">
+          <div className="mb-4 border-b border-slate-100 pb-3">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center">
+              <Settings2 size={18} className="mr-2 text-indigo-600"/> 
+              {editing === 'node' ? 'Edit Node' : editing === 'edge' ? 'Edit Edge' : 'Brush Settings'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              {editing ? "Click canvas background to deselect." : "Sets defaults for next drawing."}
+            </p>
+          </div>
+
+          <div className={`mb-6 transition-opacity ${editing === 'edge' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+            <h3 className="text-sm font-bold text-slate-700 mb-2">Node Style</h3>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {NODE_SHAPES.map(s => (
+                <button key={s} onClick={() => updateSelectedOrBrush('node', 'shape', s)}
+                  className={`px-2 py-1.5 text-xs rounded border capitalize ${activeNodeProps.shape === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Object.keys(NODE_COLORS).map(c => (
+                <button key={c} onClick={() => updateSelectedOrBrush('node', 'color', c)}
+                  title={c} className={`w-8 h-8 rounded-full border-2 ${activeNodeProps.color === c ? 'border-slate-800 scale-110' : 'border-slate-200'}`} style={{ backgroundColor: NODE_COLORS[c] }}/>
+              ))}
+            </div>
+          </div>
+
+          <div className={`transition-opacity ${editing === 'node' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+            <h3 className="text-sm font-bold text-slate-700 mb-2">Edge Style (Weight)</h3>
+            
+            <div className="mb-3">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Color / Weight mapping:</label>
+              <div className="flex flex-col gap-1">
+                {Object.keys(EDGE_COLORS).map(c => (
+                  <button key={c} onClick={() => updateSelectedOrBrush('edge', 'color', c)}
+                    className={`flex items-center text-xs px-2 py-1 rounded border ${activeEdgeProps.color === c ? 'bg-slate-100 border-slate-400 font-bold' : 'border-transparent hover:bg-slate-50'}`}>
+                    <span className="w-4 h-4 rounded-sm border border-slate-300 mr-2 inline-block" style={{ backgroundColor: EDGE_COLORS[c] }}></span>
+                    <span className="capitalize flex-1 text-left">{c}</span>
+                    <span className="text-slate-500 font-mono">{WEIGHT_MAP[c] > 0 ? `+${WEIGHT_MAP[c]}` : WEIGHT_MAP[c]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {EDGE_STYLES.map(s => (
+                <button key={s} onClick={() => updateSelectedOrBrush('edge', 'style', s)}
+                  className={`px-2 py-1.5 text-xs rounded border capitalize ${activeEdgeProps.style === s ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Thickness: {activeEdgeProps.thickness}</label>
+              <input type="range" min="1" max="10" value={activeEdgeProps.thickness} onChange={(e) => updateSelectedOrBrush('edge', 'thickness', parseInt(e.target.value))} className="w-full accent-indigo-600"/>
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas Area */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-300 relative overflow-hidden flex flex-col">
+          
+          {/* Canvas Toolbar */}
+          <div className="absolute top-3 left-3 right-3 flex justify-between pointer-events-none z-10">
+            <div className="bg-white/90 backdrop-blur border border-slate-200 p-1.5 rounded-lg flex gap-1 shadow-sm pointer-events-auto">
+              <button onClick={exportPNG} className="px-2 py-1 text-xs flex items-center text-slate-700 hover:bg-slate-100 rounded font-medium transition">
+                <ImageIcon size={14} className="mr-1 text-blue-600"/> PNG
+              </button>
+              <button onClick={exportSVG} className="px-2 py-1 text-xs flex items-center text-slate-700 hover:bg-slate-100 rounded font-medium transition">
+                <FileCode2 size={14} className="mr-1 text-orange-600"/> SVG
+              </button>
+            </div>
+            
+            <div className="bg-white/90 backdrop-blur border border-slate-200 p-1.5 rounded-lg flex gap-1 shadow-sm pointer-events-auto">
+              <button onClick={clearNetwork} className="px-2 py-1 text-xs flex items-center text-red-600 hover:bg-red-50 rounded font-medium transition">
+                <Trash2 size={14} className="mr-1"/> Clear
+              </button>
+            </div>
+          </div>
+
+          <svg ref={svgRef} onClick={handleSvgClick} className="w-full h-full cursor-crosshair" style={{ backgroundColor: '#f8fafc' }}>
+            <defs>
+              {Object.keys(EDGE_COLORS).map(colorName => {
+                const hex = EDGE_COLORS[colorName];
+                const safeName = colorName.replace(' ', '-');
+                return (
+                  <marker key={safeName} id={`arrow-${safeName}`} viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill={hex} />
+                  </marker>
+                );
+              })}
+            </defs>
+
+            {edges.map((edge) => {
+              const sourceNode = nodes.find(n => n.id === edge.source);
+              const targetNode = nodes.find(n => n.id === edge.target);
+              if (!sourceNode || !targetNode) return null;
+              
+              const isSelected = selection.type === 'edge' && selection.id === edge.id;
+              const isDashed = edge.style.includes('dot');
+              const hasArrow = edge.style.includes('arrow');
+              const safeColorName = edge.color.replace(' ', '-');
+
+              return (
+                <g key={edge.id} className="cursor-pointer" onClick={(e) => handleEdgeClick(e, edge.id)}>
+                  <line x1={sourceNode.x} y1={sourceNode.y} x2={targetNode.x} y2={targetNode.y} stroke="transparent" strokeWidth="20" />
+                  <line 
+                    x1={sourceNode.x} y1={sourceNode.y} x2={targetNode.x} y2={targetNode.y} 
+                    stroke={EDGE_COLORS[edge.color] || edge.color} strokeWidth={edge.thickness}
+                    strokeDasharray={isDashed ? `${edge.thickness * 2},${edge.thickness * 2}` : 'none'}
+                    markerEnd={hasArrow ? `url(#arrow-${safeColorName})` : 'none'}
+                  />
+                  {isSelected && <line x1={sourceNode.x} y1={sourceNode.y} x2={targetNode.x} y2={targetNode.y} stroke="#f59e0b" strokeWidth={edge.thickness + 4} strokeOpacity="0.4" />}
+                </g>
+              );
+            })}
+
+            {nodes.map((node) => {
+              const isSelected = selection.type === 'node' && selection.id === node.id;
+              return (
+                <g key={node.id} onClick={(e) => handleNodeClick(e, node.id)} className="cursor-pointer">
+                  {isSelected && <circle cx={node.x} cy={node.y} r="26" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 4" className="animate-spin-slow" />}
+                  {renderShape(node.x, node.y, node.shape, node.color, isSelected)}
+                  <text x={node.x} y={node.y} textAnchor="middle" dy=".3em" fill={['white', 'yellow', 'light red', 'light blue'].includes(node.color) ? '#1e293b' : 'white'} fontSize="11" fontWeight="bold" pointerEvents="none">
+                    {node.id}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+
+      {/* Bottom Panel: Data & Math Views */}
+      <div className="w-full h-72 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200 bg-slate-50">
+          <button 
+            onClick={() => setBottomTab('matrix')}
+            className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'matrix' ? 'bg-white text-indigo-700 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-100'}`}
+          >
+            <Table2 size={16} className="mr-2"/> Adjacency Matrix
+          </button>
+          <button 
+            onClick={() => setBottomTab('rcode')}
+            className={`flex-1 py-3 text-sm font-bold flex items-center justify-center transition-colors ${bottomTab === 'rcode' ? 'bg-slate-900 text-emerald-400 border-b-2 border-emerald-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+          >
+            <Code size={16} className="mr-2"/> R Code Export
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-auto relative">
+          
+          {/* Matrix View */}
+          {bottomTab === 'matrix' && (
+            <div className="p-4">
+              {nodes.length === 0 ? (
+                <div className="text-slate-400 text-center mt-10 text-sm">Stamp nodes to generate matrix.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-max border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="p-2 border border-slate-200 bg-slate-100 text-slate-500 w-12 text-center text-xs font-bold"></th>
+                        {nodes.map(n => <th key={`th-${n.id}`} className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{n.id}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nodes.map((rowNode, i) => (
+                        <tr key={`tr-${rowNode.id}`}>
+                          <th className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{rowNode.id}</th>
+                          {nodes.map((colNode, j) => {
+                            const val = adjMatrix[i][j];
+                            // Heatmap color logic
+                            let bgClass = "bg-white";
+                            let textClass = "text-slate-400";
+                            
+                            if (val === 1) { bgClass = "bg-blue-800"; textClass = "text-white font-bold"; }
+                            else if (val === 0.7) { bgClass = "bg-blue-500"; textClass = "text-white font-bold"; }
+                            else if (val === 0.3) { bgClass = "bg-blue-200"; textClass = "text-blue-900 font-bold"; }
+                            else if (val === -0.3) { bgClass = "bg-red-200"; textClass = "text-red-900 font-bold"; }
+                            else if (val === -0.7) { bgClass = "bg-red-500"; textClass = "text-white font-bold"; }
+                            else if (val === -1) { bgClass = "bg-red-800"; textClass = "text-white font-bold"; }
+
+                            return (
+                              <td key={`td-${rowNode.id}-${colNode.id}`} className={`p-2 border border-slate-200 w-12 text-center text-xs transition-colors ${bgClass} ${textClass}`}>
+                                {val}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* R Code View */}
+          {bottomTab === 'rcode' && (
+            <div className="absolute inset-0 bg-slate-900 p-4 overflow-auto">
+              <button onClick={() => navigator.clipboard.writeText(generateRCode())} className="absolute top-4 right-4 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors flex items-center">
+                Copy R Code
+              </button>
+              <pre className="font-mono text-xs text-emerald-300 leading-relaxed pr-24">
+                {generateRCode()}
+              </pre>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
