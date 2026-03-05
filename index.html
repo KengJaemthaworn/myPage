@@ -56,20 +56,27 @@
                 { 
                     label: "Learning Log", 
                     subpages: [
-                        { id: "log_day1", label: "Day 1: The Divergence", file: "content/log_day1.md" },
-                        { id: "log_day2", label: "Day 2: Wiring the Graph", file: "content/log_day2.md" }
+                        { id: "log_day1", label: "Day 1: The Divergence", file: "Log/log_day1.md" },
+                        { id: "log_day2", label: "Day 2: Wiring the Graph", file: "Log/log_day2.md" }
                     ]
                 },
                 { 
-                    label: "LivingNetwork: Blog", 
+                    label: "LivingNetworks: Blog", 
                     subpages: [
-                        { id: "Blog_1", label: "Small world", file: "content/smallworld.md" },
-                        { id: "Blog_2", label: "Scale free", file: "content/scalefree.md" }
+                        { id: "Blog_1", label: "Small world", file: "LivingNetworks/smallworld.md" },
+                        { id: "Blog_2", label: "Scale free", file: "LivingNetworks/scalefree.md" }
                     ]
                 },
-                { id: "research", label: "NSS vs GXS Research", file: "content/research.md" },
                 { 
-                    label: "Simulators:Landscape", 
+                    label: "Research", 
+                    subpages: [
+                        { id: "GS", label: "Gene selection", file: "research/GS.md" },
+                        { id: "NR", label: "Network representation", file: "research/NR.md" },
+                        { id: "Discord", label: "Discordance", file: "research/Discord.md", type: "link" }
+                    ]
+                },
+                { 
+                    label: "Simulator:Landscape", 
                     subpages: [
                         { id: "sim_readme", label: "📖 README", file: "sim_land/readme_landscape.md" },
                         { id: "sim_techreport", label: "🔧 Technical Report", file: "sim_land/technical_report.md" },
@@ -77,11 +84,11 @@
                     ]
                 },
                 { 
-                    label: "Simulators:Small-World", 
+                    label: "Simulator:Small-World", 
                     subpages: [
                         { id: "sim_readme", label: "📖 README", file: "sim_sw/readme.md" },
                         { id: "sim_techreport", label: "🔧 Technical Report", file: "sim_sw/technicalRep.md" },
-                        { id: "sim_landscape", label: "🌐 Small-World Sim (3D)", file: "sim_sw/smallWorldSim.html", type: "link" }
+                        { id: "sim_landscape", label: "🌐 Small-World Network Sim", file: "sim_sw/smallWorldSim.html", type: "link" }
                     ]
                 },
                 { id: "code", label: "R Code Snippets", file: "content/code.md" }
