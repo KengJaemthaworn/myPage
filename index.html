@@ -3,66 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Research Log</title>
+    <title>Research Log | Terminal Interface</title>
     
-    <!-- Tailwind CSS for clean, readable styling (Dyslexia-friendly spacing) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Marked.js for rendering Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Highlight.js for R code highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <!-- Highlight.js for tactical code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/r.min.js"></script>
 
     <style>
-        /* Dyslexia-friendly typography adjustments */
-        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.025em; line-height: 1.75; }
-        .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #1f2937; }
-        .markdown-content h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #374151; }
-        .markdown-content p { margin-bottom: 1.25rem; font-size: 1.125rem; color: #4b5563; }
-        .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; color: #4b5563; }
-        .markdown-content pre { background-color: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1.25rem; }
-        .markdown-content code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.875rem; }
-        .nav-active { background-color: #e5e7eb; font-weight: 600; color: #111827; }
-        
-        /* Add a small icon class for external links */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-deep: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.75);
+            --border-glow: rgba(255, 255, 255, 0.1);
+            --accent-indigo: #818cf8;
+            --accent-emerald: #34d399;
+            --accent-rose: #fb7185;
+        }
+
+        body { 
+            background-color: var(--bg-deep); 
+            color: #e2e8f0; 
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.03em; /* Dyslexia friendly */
+            line-height: 1.8;      /* Dyslexia friendly */
+        }
+
+        /* Glassmorphic Panel Base */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        /* Markdown Content Styling */
+        .markdown-content h1 { 
+            font-size: 2rem; 
+            font-weight: 900; 
+            margin-top: 2.5rem; 
+            margin-bottom: 1.5rem; 
+            color: var(--accent-indigo); 
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 2px solid rgba(129, 140, 248, 0.2);
+            padding-bottom: 0.5rem;
+        }
+        .markdown-content h2 { 
+            font-size: 1.4rem; 
+            font-weight: 700; 
+            margin-top: 2rem; 
+            margin-bottom: 1rem; 
+            color: var(--accent-emerald); 
+        }
+        .markdown-content p { margin-bottom: 1.5rem; font-size: 1.1rem; color: #cbd5e1; }
+        .markdown-content ul { list-style-type: square; padding-left: 1.5rem; margin-bottom: 1.5rem; color: #94a3b8; }
+        .markdown-content pre { 
+            background-color: #0f172a !important; 
+            padding: 1.25rem; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 1.5rem; 
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .markdown-content code { 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 0.95rem; 
+        }
+
+        /* Navigation Styling */
+        .nav-active { 
+            background-color: rgba(129, 140, 248, 0.15); 
+            color: var(--accent-indigo) !important;
+            border-left: 3px solid var(--accent-indigo);
+        }
+
         .external-link::after {
             content: ' ↗';
             font-size: 0.8em;
-            color: #888;
+            opacity: 0.5;
         }
 
-        /* Hide the default marker for summary so we can make our own arrow */
-        details > summary {
-            list-style: none;
-            outline: none;
-        }
-        details > summary::-webkit-details-marker {
-            display: none;
-        }
+        details > summary { list-style: none; outline: none; }
+        details > summary::-webkit-details-marker { display: none; }
+
+        /* Custom Scrollbar for the HUD look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-indigo); }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased">
+<body class="antialiased overflow-x-hidden">
 
-    <!-- 
-    ========================================================================
-    EDIT YOUR CONFIGURATION HERE
-    This is the ONLY part of this file you need to change.
-    ========================================================================
-    -->
     <script>
         const SITE_CONFIG = {
             profile: {
-                name: "Thanakorn (Keng) Jaemthaworn",
+                name: "Thanakorn Jaemthaworn",
                 subtitle: "Veterinarian & Network Biologist",
-                //photo: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=400&h=400" 
-                //photo: "https://media.licdn.com/dms/image/v2/D4E03AQE0voQSotMHIw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1711490556549?e=1774483200&v=beta&t=EkRGw3s5Vtr_KmGh1JHzwxaUuX16HwAE0zzBBM45AgM"
                 photo: "https://media.licdn.com/dms/image/v2/D4E03AQH305GXRLK9UA/profile-displayphoto-scale_400_400/B4EZy7gbjQGoAk-/0/1772672384255?e=1774483200&v=beta&t=JODfmag6O0dIRrTTvmJUUL81IYX7Wn5wh8C59vXCI1w"
             },
-
-            // Link to your separate .md files here
             navigation: [
                 { 
                     label: "Learning Log", 
@@ -86,11 +133,9 @@
                         { id: "Discord", label: "Discordance", file: "research/Discord.md", type: "link" }
                     ]
                 },
-                // --- Grouped Simulators under a main "Simulators" dropdown ---
                 {
                     label: "Simulators",
                     subpages: [
-                        // FIX: Moved this item INTO the subpages array and gave it a unique ID
                         { id: "sim_intro", label: "Introduction", file: "sim/code.md" }, 
                         { 
                             label: "Landscape", 
@@ -110,39 +155,48 @@
                         }
                     ]
                 },
-                // -------------------------------------------------------------
                 { id: "code", label: "R Code Snippets", file: "content/code.md" }
             ]
         };
     </script>
-    <!-- ======================================================================== -->
 
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row min-h-screen">
-        <!-- Sidebar Navigation -->
-        <aside class="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0">
-            <div class="p-6 md:sticky md:top-0">
-                <div class="text-center md:text-left mb-8">
-                    <img id="profile-img" src="" alt="Profile" class="w-24 h-24 rounded-full mx-auto md:mx-0 object-cover mb-4 border-2 border-gray-200">
-                    <h1 id="profile-name" class="text-xl font-bold text-gray-900"></h1>
-                    <p id="profile-subtitle" class="text-sm text-gray-500 font-medium mt-1"></p>
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar Navigation (The Controller Panel) -->
+        <aside class="w-full md:w-72 flex-shrink-0 p-4">
+            <div class="glass-panel rounded-2xl p-6 md:sticky md:top-6 h-full md:h-[calc(100vh-3rem)] overflow-y-auto">
+                <div class="text-center md:text-left mb-10">
+                    <div class="relative w-24 h-24 mx-auto md:mx-0 mb-4">
+                        <img id="profile-img" src="" alt="Profile" class="w-full h-full rounded-2xl object-cover border border-white/10 grayscale hover:grayscale-0 transition-all duration-500">
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
+                    </div>
+                    <h1 id="profile-name" class="text-lg font-black text-white tracking-tight uppercase"></h1>
+                    <p id="profile-subtitle" class="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em] mt-1"></p>
                 </div>
-                <nav id="nav-menu" class="flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto pb-4 md:pb-0">
-                    <!-- Buttons are injected here automatically -->
+                
+                <nav id="nav-menu" class="flex flex-col space-y-1">
+                    <!-- Nav Items injected here -->
                 </nav>
+
+                <div class="mt-auto pt-8 border-t border-white/5">
+                    <div class="text-[9px] font-mono text-slate-500 uppercase tracking-widest">System Status: Nominal</div>
+                </div>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 p-6 md:p-12 lg:p-16 bg-gray-50">
-            <div class="max-w-3xl mx-auto bg-white p-8 md:p-12 shadow-sm rounded-xl border border-gray-100">
-                <div id="content-area" class="markdown-content">
+        <!-- Main Content Area (The Observation Deck) -->
+        <main class="flex-1 p-4 md:p-6 lg:p-8">
+            <div class="glass-panel rounded-2xl min-h-full p-8 md:p-12 lg:p-16 relative overflow-hidden">
+                <!-- Decorative background elements -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                <div class="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -ml-32 -mb-32"></div>
+
+                <div id="content-area" class="markdown-content max-w-4xl mx-auto relative z-10">
                     <!-- Markdown content will load here -->
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Application Logic for loading files -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('profile-name').textContent = SITE_CONFIG.profile.name;
@@ -152,45 +206,47 @@
             const navMenu = document.getElementById('nav-menu');
             const contentArea = document.getElementById('content-area');
             
-            // Find the first default item to load (must handle deep nesting)
             let defaultItem = SITE_CONFIG.navigation[0];
             while (defaultItem.subpages) {
                 defaultItem = defaultItem.subpages[0];
             }
 
             async function renderPage(item) {
-                // Highlight the active button
                 document.querySelectorAll('.nav-btn').forEach(btn => {
-                    // Don't highlight external links
                     if(btn.dataset.id === item.id && item.type !== 'link') {
-                        btn.classList.add('nav-active', 'bg-gray-100', 'text-gray-900');
-                        btn.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                        btn.classList.add('nav-active');
                     } else {
-                        btn.classList.remove('nav-active', 'bg-gray-100', 'text-gray-900');
-                        btn.classList.add('text-gray-600', 'hover:bg-gray-50');
+                        btn.classList.remove('nav-active');
                     }
                 });
 
-                contentArea.innerHTML = "<p class='text-gray-500 animate-pulse'>Loading research notes...</p>";
+                contentArea.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20 space-y-4">
+                        <div class="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                        <p class='text-indigo-400/50 font-mono text-xs uppercase tracking-[0.3em]'>Fetching Core Data...</p>
+                    </div>
+                `;
 
                 try {
-                    // This fetches your external .md files
                     const response = await fetch(item.file);
                     if (!response.ok) throw new Error(`Could not load ${item.file}`);
                     
                     const rawMarkdown = await response.text();
                     contentArea.innerHTML = marked.parse(rawMarkdown);
 
-                    // Applies R code highlighting
                     document.querySelectorAll('pre code').forEach((block) => {
                         hljs.highlightElement(block);
                     });
                 } catch (error) {
                     contentArea.innerHTML = `
-                        <div class="bg-red-50 border-l-4 border-red-500 p-4">
-                            <h3 class="text-red-800 font-bold">Error Loading File</h3>
-                            <p class="text-red-700 mt-2">Could not find <code>${item.file}</code>.</p>
-                            <p class="text-red-700 mt-2 text-sm"><strong>Note:</strong> If you are testing this locally or in a preview window, the browser blocks dynamic file loading for security, or the file doesn't exist yet. It will work perfectly once pushed to GitHub Pages!</p>
+                        <div class="glass-panel border-rose-500/30 bg-rose-500/5 p-8 rounded-xl">
+                            <h3 class="text-rose-400 font-black uppercase tracking-widest flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                Data Retrieval Failure
+                            </h3>
+                            <p class="text-slate-400 mt-4 font-mono text-sm leading-relaxed">
+                                Path: <code>${item.file}</code> not found in local/remote cluster.
+                            </p>
                         </div>
                     `;
                 }
@@ -200,22 +256,17 @@
                 const btn = document.createElement('button');
                 btn.textContent = item.label;
                 btn.dataset.id = item.id;
-                // Kept your exact classes
-                btn.className = "nav-btn text-left px-4 py-2 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap md:whitespace-normal w-full";
+                btn.className = "nav-btn text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 w-full flex items-center justify-between group";
                 
-                // Add a small arrow indicator if it's an external link
                 if (item.type === 'link') {
                     btn.classList.add('external-link');
                 }
                 
                 btn.addEventListener('click', () => {
-                    // IF IT IS A LINK: Open in new tab and stop the function
                     if (item.type === 'link') {
                         window.open(item.file, '_blank');
                         return; 
                     }
-                    
-                    // IF IT IS MARKDOWN: Render as normal
                     renderPage(item);
                     if(window.innerWidth < 768) {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -224,56 +275,38 @@
                 return btn;
             }
 
-            // RECURSIVE FUNCTION to build nested menus infinitely deep
             function buildMenu(menuItems, parentContainer, depth = 0) {
                 menuItems.forEach(item => {
                     if (item.subpages) {
-                        // Create the <details> block
                         const details = document.createElement('details');
-                        // ลบคำสั่ง details.open = true; ออก เพื่อให้เมนูทั้งหมดพับเก็บเป็นค่าเริ่มต้น
-                        
-                        // Margin logic depending on depth
-                        details.className = (depth === 0) ? "mb-3 group" : "mb-2 mt-1 group";
+                        details.className = "mb-2 group";
 
-                        // Create the summary (clickable header)
                         const summary = document.createElement('summary');
-                        summary.textContent = item.label;
-                        
-                        // Styling logic depending on depth (Root level vs Sub level)
                         if (depth === 0) {
-                            summary.className = "cursor-pointer font-bold text-gray-400 uppercase tracking-wider text-xs px-2 mb-2 hover:text-gray-600 transition-colors flex justify-between items-center";
+                            summary.className = "cursor-pointer font-black text-slate-500 uppercase tracking-[0.2em] text-[10px] px-4 py-3 hover:text-indigo-400 transition-colors flex justify-between items-center";
                         } else {
-                            // Sub-level header style (Dyslexia friendly visual differentiation)
-                            summary.className = "cursor-pointer font-semibold text-gray-600 text-sm px-2 py-1 mb-1 hover:text-gray-900 transition-colors bg-gray-50 rounded-md border border-gray-100 flex justify-between items-center";
+                            summary.className = "cursor-pointer font-bold text-slate-400 text-xs px-4 py-2 mb-1 hover:text-white transition-colors bg-white/5 rounded-xl border border-white/5 flex justify-between items-center";
                         }
                         
-                        // Add the rotating arrow
-                        summary.innerHTML += `<span class="text-gray-400 text-xs transform group-open:rotate-180 transition-transform">▼</span>`;
+                        summary.innerHTML = `<span>${item.label}</span> <span class="text-[8px] opacity-30 transform group-open:rotate-180 transition-transform">▼</span>`;
                         details.appendChild(summary);
 
-                        // Container for the sub-items
                         const subContainer = document.createElement('div');
-                        subContainer.className = "flex flex-col space-y-1 border-l-2 border-gray-100 ml-3 pl-2";
+                        subContainer.className = "flex flex-col space-y-1 border-l border-white/10 ml-5 pl-2 my-1";
 
-                        // !!! Recursion happens here !!!
                         buildMenu(item.subpages, subContainer, depth + 1);
 
                         details.appendChild(subContainer);
                         parentContainer.appendChild(details);
 
                     } else {
-                        // It is a clickable button/link
                         const btn = createNavButton(item);
-                        if (depth === 0) btn.classList.add('mb-2'); // Margin if at root level
                         parentContainer.appendChild(btn);
                     }
                 });
             }
 
-            // Start building the menu from the configuration
             buildMenu(SITE_CONFIG.navigation, navMenu);
-
-            // Load the first page on startup
             renderPage(defaultItem);
         });
     </script>
