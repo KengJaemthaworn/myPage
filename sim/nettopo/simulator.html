@@ -403,14 +403,20 @@
           const exportSVG = (e) => {
             if (e) e.preventDefault();
             if (!svgRef.current) return;
-            const svgData = new XMLSerializer().serializeToString(svgRef.current);
-            let svgWithXmlns = svgData;
+            
+            // Clone node to prevent mutating the live DOM
+            const clone = svgRef.current.cloneNode(true);
+            
+            // FORCE REMOVE inline background color so it is purely transparent
+            clone.style.backgroundColor = 'transparent';
+            
+            let svgData = new XMLSerializer().serializeToString(clone);
             if (!svgData.includes('xmlns=')) {
-                svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+                svgData = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
             }
             
             // Generate Data URI safely
-            const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgWithXmlns);
+            const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
             setExportedImg({ dataUrl, type: 'svg' });
           };
 
@@ -428,6 +434,9 @@
             
             // Clone node to prevent mutating the live DOM
             const clone = svgEl.cloneNode(true);
+            
+            // FORCE REMOVE inline background color so the canvas stays transparent
+            clone.style.backgroundColor = 'transparent';
             
             // Set viewBox to scale the content correctly, and increase explicit dimensions
             clone.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -452,9 +461,7 @@
                   canvas.height = height * scale; 
                   const ctx = canvas.getContext("2d");
                   
-                  // NO BACKGROUND FILL (Creates Transparent Background)
-                  // ctx.fillStyle = "#f8fafc"; 
-                  // ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                  // WE DO NOT FILL BACKGROUND HERE -> It stays fully transparent.
                   
                   // Draw scaled SVG
                   ctx.drawImage(img, 0, 0);
