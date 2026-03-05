@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { PlusCircle, Trash2, Code, Settings2, Image as ImageIcon, FileCode2, Table2, Move, AlertCircle, Activity } from 'lucide-react';
+import { PlusCircle, Trash2, Code, Settings2, Image as ImageIcon, FileCode2, Table2, Move, AlertCircle, Activity, Download } from 'lucide-react';
 
 // --- Configuration & Maps ---
 const NODE_COLORS = {
@@ -168,11 +168,9 @@ export default function App() {
     const N = nodes.length;
     if (N === 0) return [];
 
-    // Convert to unweighted adjacency (1 for any edge, 0 for none) to safely calculate paths
     const adj = adjMatrix.map(row => row.map(val => val !== 0 ? 1 : 0));
     const hasDirectedEdges = edges.some(e => e.style.includes('arrow'));
 
-    // 1. Degrees
     let inDeg = Array(N).fill(0);
     let outDeg = Array(N).fill(0);
     for(let i=0; i<N; i++) {
@@ -181,9 +179,8 @@ export default function App() {
       }
     }
 
-    // 2. Shortest Paths (Floyd-Warshall)
     let dist = Array(N).fill(0).map(() => Array(N).fill(Infinity));
-    let paths = Array(N).fill(0).map(() => Array(N).fill(0)); // count shortest paths
+    let paths = Array(N).fill(0).map(() => Array(N).fill(0)); 
     for(let i=0; i<N; i++) { dist[i][i] = 0; paths[i][i] = 1; }
     for(let u=0; u<N; u++) {
       for(let v=0; v<N; v++) {
@@ -203,7 +200,6 @@ export default function App() {
       }
     }
 
-    // 3. Closeness & Betweenness
     let closeness = Array(N).fill(0);
     let betweenness = Array(N).fill(0);
     
@@ -226,14 +222,12 @@ export default function App() {
         }
       }
     }
-    // Adjust betweenness scale for undirected
     if (!hasDirectedEdges) betweenness = betweenness.map(b => b / 2);
 
-    // 4. Clustering Coefficient (Local)
     let clustering = Array(N).fill(0);
     for(let i=0; i<N; i++) {
       let neighbors = [];
-      for(let j=0; j<N; j++) { if(adj[i][j] > 0 || adj[j][i] > 0) neighbors.push(j); } // Treat neighborhood symmetrically for local CC
+      for(let j=0; j<N; j++) { if(adj[i][j] > 0 || adj[j][i] > 0) neighbors.push(j); } 
       let k = neighbors.length;
       if (k < 2) continue;
       let links = 0;
@@ -245,14 +239,13 @@ export default function App() {
       clustering[i] = links / (k * (k - 1));
     }
 
-    // 5. Eigenvector (Power Iteration approximation)
     let eigen = Array(N).fill(1);
     for(let iter=0; iter<20; iter++) {
       let nextEigen = Array(N).fill(0);
       let norm = 0;
       for(let i=0; i<N; i++) {
         for(let j=0; j<N; j++) {
-          if(adj[i][j] > 0) nextEigen[i] += eigen[j]; // v = A*v
+          if(adj[i][j] > 0) nextEigen[i] += eigen[j]; 
         }
         norm += nextEigen[i] * nextEigen[i];
       }
@@ -264,7 +257,7 @@ export default function App() {
       ...node,
       inDeg: inDeg[i],
       outDeg: outDeg[i],
-      totalDeg: hasDirectedEdges ? inDeg[i] + outDeg[i] : inDeg[i], // if undirected, inDeg equals total edges
+      totalDeg: hasDirectedEdges ? inDeg[i] + outDeg[i] : inDeg[i], 
       closeness: closeness[i],
       betweenness: betweenness[i],
       clustering: clustering[i],
@@ -273,6 +266,37 @@ export default function App() {
   };
 
   const centralityData = useMemo(() => getCentralityMetrics(), [nodes, edges, adjMatrix]);
+
+  // --- Exports (CSV, R, Images) ---
+  const exportMatrixCSV = () => {
+    if (nodes.length === 0) return;
+    let csv = "Node," + nodes.map(n => `V${n.id}`).join(",") + "\n";
+    adjMatrix.forEach((row, i) => {
+      csv += `V${nodes[i].id},` + row.join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "adjacency_matrix.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCentralityCSV = () => {
+    if (nodes.length === 0) return;
+    let csv = "Node,In-Deg,Out-Deg,Total Deg,Closeness,Betweenness,Eigenvector,Clustering\n";
+    centralityData.forEach(node => {
+      csv += `V${node.id},${node.inDeg},${node.outDeg},${node.totalDeg},${node.closeness.toFixed(3)},${node.betweenness.toFixed(3)},${node.eigen.toFixed(3)},${node.clustering.toFixed(3)}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "centrality_metrics.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const generateRCode = () => {
     if (nodes.length === 0) return "# Stamp nodes to generate code...";
@@ -294,7 +318,7 @@ export default function App() {
     return code;
   };
 
-  const exportSVG = () => { /* SVG logic unchanged */
+  const exportSVG = () => {
     if (!svgRef.current) return;
     const svgData = new XMLSerializer().serializeToString(svgRef.current);
     const svgWithXmlns = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
@@ -303,7 +327,7 @@ export default function App() {
     const link = document.createElement("a"); link.href = url; link.download = "network_simulation.svg"; link.click(); URL.revokeObjectURL(url);
   };
 
-  const exportPNG = () => { /* PNG logic unchanged */
+  const exportPNG = () => {
     if (!svgRef.current) return;
     const svgEl = svgRef.current;
     const width = svgEl.clientWidth || 800; const height = svgEl.clientHeight || 600;
@@ -463,42 +487,50 @@ export default function App() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-auto relative">
+        <div className="flex-1 overflow-auto relative flex flex-col">
           
           {/* Matrix View */}
           {bottomTab === 'matrix' && (
-            <div className="p-4">
+            <div className="p-4 flex-1 flex flex-col">
               {nodes.length === 0 ? (
                 <div className="text-slate-400 text-center mt-10 text-sm flex flex-col items-center"><Table2 size={24} className="mb-2 opacity-50"/> Stamp nodes to generate matrix.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-max border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="p-2 border border-slate-200 bg-slate-100 text-slate-500 w-12 text-center text-xs font-bold"></th>
-                        {nodes.map(n => <th key={`th-${n.id}`} className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{n.id}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {nodes.map((rowNode, i) => (
-                        <tr key={`tr-${rowNode.id}`}>
-                          <th className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{rowNode.id}</th>
-                          {nodes.map((colNode, j) => {
-                            const val = adjMatrix[i][j];
-                            let bgClass = "bg-white"; let textClass = "text-slate-400";
-                            if (val === 1) { bgClass = "bg-blue-800"; textClass = "text-white font-bold"; }
-                            else if (val === 0.7) { bgClass = "bg-blue-500"; textClass = "text-white font-bold"; }
-                            else if (val === 0.3) { bgClass = "bg-blue-200"; textClass = "text-blue-900 font-bold"; }
-                            else if (val === -0.3) { bgClass = "bg-red-200"; textClass = "text-red-900 font-bold"; }
-                            else if (val === -0.7) { bgClass = "bg-red-500"; textClass = "text-white font-bold"; }
-                            else if (val === -1) { bgClass = "bg-red-800"; textClass = "text-white font-bold"; }
-                            return (<td key={`td-${rowNode.id}-${colNode.id}`} className={`p-2 border border-slate-200 w-12 text-center text-xs transition-colors ${bgClass} ${textClass}`}>{val}</td>);
-                          })}
+                <>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-slate-700">Adjacency Matrix</h3>
+                    <button onClick={exportMatrixCSV} className="text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors flex items-center border border-indigo-200 font-medium">
+                      <Download size={14} className="mr-1" /> Export CSV
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto flex-1">
+                    <table className="min-w-max border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="p-2 border border-slate-200 bg-slate-100 text-slate-500 w-12 text-center text-xs font-bold"></th>
+                          {nodes.map(n => <th key={`th-${n.id}`} className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{n.id}</th>)}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {nodes.map((rowNode, i) => (
+                          <tr key={`tr-${rowNode.id}`}>
+                            <th className="p-2 border border-slate-200 bg-slate-50 text-slate-700 w-12 text-center text-xs font-bold">V{rowNode.id}</th>
+                            {nodes.map((colNode, j) => {
+                              const val = adjMatrix[i][j];
+                              let bgClass = "bg-white"; let textClass = "text-slate-400";
+                              if (val === 1) { bgClass = "bg-blue-800"; textClass = "text-white font-bold"; }
+                              else if (val === 0.7) { bgClass = "bg-blue-500"; textClass = "text-white font-bold"; }
+                              else if (val === 0.3) { bgClass = "bg-blue-200"; textClass = "text-blue-900 font-bold"; }
+                              else if (val === -0.3) { bgClass = "bg-red-200"; textClass = "text-red-900 font-bold"; }
+                              else if (val === -0.7) { bgClass = "bg-red-500"; textClass = "text-white font-bold"; }
+                              else if (val === -1) { bgClass = "bg-red-800"; textClass = "text-white font-bold"; }
+                              return (<td key={`td-${rowNode.id}-${colNode.id}`} className={`p-2 border border-slate-200 w-12 text-center text-xs transition-colors ${bgClass} ${textClass}`}>{val}</td>);
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -512,11 +544,16 @@ export default function App() {
                 <>
                   <div className="mb-3 bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-md text-xs flex items-start shadow-sm">
                     <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                    <p>
-                      <strong>Topological Approximation:</strong> Calculations here run live in JS and treat all edges as <em>unweighted topology</em> (Distance = 1) to avoid math errors from negative correlations. 
-                      Graph is treated as <strong>{edges.some(e => e.style.includes('arrow')) ? 'Directed/Mixed' : 'Undirected'}</strong> based on your drawn arrows. 
-                      For rigorous weighted metrics, please use the generated R code.
-                    </p>
+                    <div className="flex-1">
+                      <p className="mb-1">
+                        <strong>Topological Approximation:</strong> Calculations here run live in JS and treat all edges as <em>unweighted topology</em> (Distance = 1) to avoid math errors from negative correlations. 
+                        Graph is treated as <strong>{edges.some(e => e.style.includes('arrow')) ? 'Directed/Mixed' : 'Undirected'}</strong> based on your drawn arrows. 
+                        For rigorous weighted metrics, please use the generated R code.
+                      </p>
+                    </div>
+                    <button onClick={exportCentralityCSV} className="ml-4 flex-shrink-0 text-xs bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded transition-colors flex items-center border border-indigo-200 font-medium">
+                      <Download size={14} className="mr-1" /> Export CSV
+                    </button>
                   </div>
                   <div className="overflow-x-auto flex-1">
                     <table className="min-w-full border-collapse">
