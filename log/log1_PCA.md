@@ -26,3 +26,21 @@ Check out this recent discussion on Facebook:
 
 
 <iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid02Yteuq3ZFYXB7gV4pz7BjS6hb7ZZaKCuEVa2iBCMnzUsZpV5sc6VsnGdLbxRVL5Q3l%26id%3D61574579699087&show_text=true&width=500" width="500" height="808" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FlifecodeCLST%2Fposts%2Fpfbid02EdyLMco7miYVY3aGoFMZUpCUufoHgkjdT3cwt53nit56PpMJpRM6K7RD1EeK9p9dl&show_text=true&width=500" width="500" height="571" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+#### [**อ่านต่อที่นี่, Read more here **](https://medium.com/\@comlifescithailand/ปรากฏการณ์โลกใบเล็ก-d590df6708c7)
+
+
+
+
+
+
+
+
+
+
+
+
+
