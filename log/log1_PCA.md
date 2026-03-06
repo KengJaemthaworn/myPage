@@ -30,13 +30,19 @@ Check out this recent discussion on Facebook:
 
 <iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FlifecodeCLST%2Fposts%2Fpfbid02EdyLMco7miYVY3aGoFMZUpCUufoHgkjdT3cwt53nit56PpMJpRM6K7RD1EeK9p9dl&show_text=true&width=500" width="500" height="571" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
 
-#### [**อ่านต่อที่นี่, Read more here **](https://medium.com/\@comlifescithailand/ปรากฏการณ์โลกใบเล็ก-d590df6708c7)
+#### [**อ่านต่อที่นี่, Read more here: Six degree of separation **](https://medium.com/\@comlifescithailand/ปรากฏการณ์โลกใบเล็ก-d590df6708c7)
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FlifecodeCLST%2Fposts%2Fpfbid0a8dE14TzcXyySGJ6EceiwnFqKwinKVFGpaxNFUXz2e1L8j1vS3Mc4aid47iqRTyDl&show_text=true&width=500" width="500" height="652" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
 
 
 
+#### [**อ่านต่อที่นี่, Read more here: What is Life? ep.2 **](https://medium.com/@comlifescithailand/ถอดชีวิต-ผ่านการอ่านอย่างเป็นระบบ-17d289fd3e61)
 
 
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FlifecodeCLST%2Fposts%2Fpfbid0a8dE14TzcXyySGJ6EceiwnFqKwinKVFGpaxNFUXz2e1L8j1vS3Mc4aid47iqRTyDl&show_text=true&width=500" width="500" height="652" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
 
+
+#### [**อ่านต่อที่นี่, Read more here: What is Life? ep.1 **](https://medium.com/@comlifescithailand/ถอดชีวิต-ผ่านการอ่านอย่างเป็นระบบ-377455d7c78f)
 
 
 
