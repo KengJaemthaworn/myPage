@@ -1,4 +1,4 @@
-# My Findings
+# My Log
 
 Check out this recent discussion on Facebook:
 
@@ -9,3 +9,20 @@ Check out this recent discussion on Facebook:
 
 
 <iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fkengome707%2Fposts%2Fpfbid0mP9zG11Pd2HG3Frwh6vD5i5cM61ngf4mSa1donMmoMsC3WkG53fmCqKFaMTzzTcal&show_text=true&width=500" width="500" height="700" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid09F5x6CNyRZuv4Y74mMFpWBsS7k3eizWXz2yGRTZdS2X9U6PJGWJPMWtzHCS5CAq4l%26id%3D61574579699087&show_text=true&width=500" width="500" height="534" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid02TDAhLqAJVhzrWNJuv9NGcnzuPHSwUHq4JUskdiMzPVYG153nKZJ7FESUMnZJEnSjl%26id%3D61574579699087&show_text=true&width=500" width="500" height="789" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid02hKb4ePWFrddYxVo2EoG3aEt9NZhS9c7hGQXxUKZEv7vnseWRvKdibiZ13FiE5sJrl%26id%3D61574579699087&show_text=true&width=500" width="500" height="705" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid02HKvZ12ZHUrU5wFyPUvFZ2sVbWjbRSP8dzFrFgKPT56ZuvTuPZo1GAsBPWC6pTwZ5l%26id%3D61574579699087&show_text=true&width=500" width="500" height="764" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+
+
+
+<iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid02Yteuq3ZFYXB7gV4pz7BjS6hb7ZZaKCuEVa2iBCMnzUsZpV5sc6VsnGdLbxRVL5Q3l%26id%3D61574579699087&show_text=true&width=500" width="500" height="808" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
