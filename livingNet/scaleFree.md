@@ -1,3 +1,10 @@
+
+
+# System Robustness
+
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/FCDNpmeZlrY?si=h-pPqvBZYGaxuG3U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 # Scale-free Network: อำนาจนิยมในเครือข่าย
 
 check it out: 30 mins for fun network sciences
