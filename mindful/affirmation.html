@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affirmation Flow Pro</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel (to compile JSX in the browser) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- ICONS (Replaced external library with inline SVGs for 100% reliability on GitHub) ---
+    const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+    const IconSettings = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+    const IconEdit3 = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
+    const IconAlignLeft = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>;
+    const IconPalette = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>;
+    const IconSliders = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>;
+    const IconMusic = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>;
+    const IconVolume2 = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
+    const IconVolumeX = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>;
+
+    // --- RELIABLE AUDIO TRACKS ---
+    const AUDIO_TRACKS = {
+      ocean: "https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg",
+      forest: "https://actions.google.com/sounds/v1/ambiences/jungle_atmosphere_late_night.ogg",
+      city: "https://actions.google.com/sounds/v1/ambiences/city_street_traffic.ogg",
+      warm: "https://actions.google.com/sounds/v1/ambiences/fire.ogg",
+      tech: "https://actions.google.com/sounds/v1/science_fiction/sci_fi_drone.ogg",
+      classic: "https://actions.google.com/sounds/v1/ambiences/outdoor_summer_ambience.ogg"
+    };
+
+    // --- THEMES ---
+    const THEMES = {
+      oldbook: { name: 'Old Book', bg: 'bg-[#f4ecd8]', text: 'text-[#4a3b32]', font: 'font-serif', audio: 'warm' },
+      creativity: { name: 'Creativity', bg: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400', text: 'text-white', font: 'font-sans', audio: 'tech' },
+      futuristic: { name: 'Futuristic', bg: 'bg-gray-950', text: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]', font: 'font-mono', audio: 'tech' },
+      classic: { name: 'Classic', bg: 'bg-white', text: 'text-slate-900', font: 'font-sans', audio: 'classic' },
+      ig: { name: 'IG Style', bg: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-fuchsia-600', text: 'text-white font-bold', font: 'font-sans', audio: 'classic' },
+      forest: { name: 'Forest', bg: 'bg-green-950', text: 'text-green-100', font: 'font-serif', audio: 'forest' },
+      ocean: { name: 'Ocean', bg: 'bg-gradient-to-b from-blue-950 to-cyan-900', text: 'text-cyan-50', font: 'font-sans', audio: 'ocean' },
+      sunset: { name: 'Sunset', bg: 'bg-gradient-to-b from-orange-600 to-purple-900', text: 'text-orange-50', font: 'font-serif', audio: 'ocean' },
+      city: { name: 'City', bg: 'bg-slate-900', text: 'text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.5)]', font: 'font-mono', audio: 'city' },
+      cozy: { name: 'Cozy', bg: 'bg-[#faf0e6]', text: 'text-[#6b584a]', font: 'font-serif', audio: 'warm' }
+    };
+
+    // --- PRESETS ---
+    const PRESETS = {
+      writer: {
+        label: "I am a good writer",
+        short: "I sit down with my data and let my curiosity guide me. I embrace the raw, messy first draft. I connect ideas like nodes in a network. I write naturally and in a flow. My thesis is coming together beautifully. My voice is honest and truly matters. My writing is fantastic and insightful.",
+        middle: "I am an inquisitive researcher seeking the truth. I sit down with my data and let my curiosity guide my fingers. I embrace the raw, messy first draft without judgment. I connect complex biological networks into understandable concepts. I write naturally, letting the story of the data emerge. I allow my thoughts to flow steadily onto the page. I refine my words with patience and care. My thesis tells a compelling, undeniable story. My voice is honest and it matters deeply to my field. My writing is fantastic, clear, and impactful. My committee is impressed by my logic and depth. My learning log resonates with everyone who reads it.",
+        long: "I am an inquisitive researcher seeking the truth behind the data. Every time I open my laptop, I bring my genuine curiosity. I sit down with my data and let my intuition guide my analysis. I embrace the raw, messy first draft without any fear of judgment. I map out my ideas, connecting concepts like nodes in a complex biological network. I write naturally, letting the narrative of the discordance emerge organically. I allow my thoughts to flow steadily, word by word, paragraph by paragraph. I do not force the process; I trust my unique voice. I refine my words with the patience of a true scientist. I edit with clarity, ensuring every sentence has a purpose. My thesis tells a compelling, undeniable story of discovery. My voice is honest, raw, and it matters deeply to my scientific community. My writing is fantastic, crystal clear, and highly impactful. My committee is blown away by the depth of my logic and my critical analysis. My learning log resonates and invites readers to think deeply with me. I am a brilliant author and a profound thinker."
+      },
+      confidence: {
+        label: "I am confident",
+        short: "I breathe deeply and face challenges one step at a time. I learn from every single mistake I make. I allow myself to be a beginner. I am a highly capable person. My confidence is unbreakable. I achieve my goals with grace.",
+        middle: "I breathe deeply and face challenges one step at a time. I approach complex problems with an open mind. I learn from every single mistake I make in the lab or in life. I allow myself to be a beginner and ask questions. I practice self-compassion when I feel overwhelmed. I trust my ability to figure out difficult concepts. I am a highly capable and intelligent person. My confidence is unbreakable and deeply rooted. I stand tall in my expertise as a vet and researcher. I achieve my goals with grace and determination.",
+        long: "I breathe deeply and face my daily challenges one deliberate step at a time. I approach complex biological problems with an open, enthusiastic mind. I learn from every single mistake, treating them as valuable data points. I actively allow myself to be a beginner, asking questions without shame. I practice profound self-compassion when my energy feels scattered or overwhelmed. I organize my tasks to work with my mind, not against it. I trust my innate ability to figure out incredibly difficult concepts. I show up for myself every single day, even when motivation wanes. I am a highly capable, intelligent, and resourceful person. My confidence is unbreakable because it is built on resilience, not perfection. I stand tall in my unique expertise as both a vet and a researcher. My presence commands respect in academic and professional circles. I achieve my loftiest goals with absolute grace and unyielding determination. I am deeply proud of the person I am becoming."
+      },
+      learner: {
+        label: "I am a good learner",
+        short: "I read papers with an active, questioning mind. I take the time to digest new methodologies. I link new knowledge to what I already know. I am a brilliant learner. My mind absorbs complex information easily. My research skills are top-tier.",
+        middle: "I read scientific papers with an active, questioning mind. I take the time to digest new, difficult methodologies step by step. I link new knowledge to the vast network of what I already know. I embrace the discomfort of not knowing the answer immediately. I seek out patterns and connections in the noise. I am a brilliant and adaptable learner. My mind absorbs complex, multidimensional information easily. My research and analytical skills are top-tier. I pass my academic milestones with flying colors.",
+        long: "I approach every scientific paper with an active, questioning, and hungry mind. I patiently take the time to digest new, difficult methodologies, breaking them down into chunks. I link every new piece of knowledge to the vast network of concepts I already understand. I actively embrace the discomfort of not knowing the answer immediately. I seek out hidden patterns and biological connections amidst the noise of the data. I utilize my unique way of thinking to see things others miss. I am a brilliant, highly adaptable, and relentless learner. My mind absorbs complex, multidimensional information with surprising ease. My research, coding, and analytical skills are top-tier and constantly evolving. I synthesize information beautifully in my thesis. I pass all my academic and life milestones with absolute flying colors. My capacity for learning is infinite."
+      },
+      cando: {
+        label: "I can do it",
+        short: "I break massive tasks into tiny, manageable pieces. I sit down and start, even if for just five minutes. I maintain my focus gently but firmly. I can absolutely do this. I have the power to finish my thesis. I am unstoppable.",
+        middle: "I break massive, overwhelming tasks into tiny, manageable pieces. I sit down and start working, even if I only promise myself five minutes. I bring my attention back gently but firmly when I get distracted. I ask for help when I hit a wall. I celebrate the small victories every day. I can absolutely do this. I have the inner power and resilience to finish my PhD thesis. My drive is stronger than my doubts. I am an unstoppable force of nature.",
+        long: "I look at the mountain ahead and deliberately break it down into tiny, manageable pieces. I sit down at my desk and start working, even if I only promise myself five minutes of focus. I bring my wandering attention back gently but firmly, without any self-criticism. I proactively ask for help and collaborate when I hit a theoretical wall. I structure my environment to support my success. I actively celebrate the small, daily victories that lead to the final goal. I can absolutely do this, just as I have overcome challenges before. I have the profound inner power, intellect, and resilience to finish my PhD thesis. My drive and passion are vastly stronger than any temporary doubts. I am an unstoppable force of nature, moving steadily toward my ultimate triumph. I will cross the finish line proudly."
+      },
+      workout: {
+        label: "Workout & Training",
+        short: "I show up to my workouts consistently. I listen to my body and push it safely. I focus on my form and my breathing. My body is incredibly strong. I am in fantastic shape. My stamina improves every single day.",
+        middle: "I make the time to show up to my workouts consistently. I listen closely to my body's signals and push my limits safely. I focus intensely on my form, my movement, and my breathing. I enjoy the process of sweating and exerting effort. I fuel my body with what it needs to recover. My physical body is incredibly strong and resilient. I am in fantastic, peak shape. My stamina and endurance improve remarkably every single day. I feel energized and alive.",
+        long: "I meticulously make the time to show up to my workouts, honoring the commitment to myself. I listen closely to my body's subtle signals, pushing my limits safely and effectively. I focus intensely on my form, my mind-muscle connection, and my deep breathing. I genuinely enjoy the raw process of sweating, moving, and exerting intense effort. I view training as a powerful stress-relief from my intense academic work. I carefully fuel my body with exactly what it needs to rebuild and recover. My physical body is an incredibly strong, resilient, and beautiful machine. I am in fantastic, undeniable peak shape. My stamina, flexibility, and overall endurance improve remarkably every single day. I feel vibrant, energized, and fully alive in my own skin. I am an athlete in life."
+      }
+    };
+
+    function App() {
+      const [mode, setMode] = useState('edit'); 
+      const [topic, setTopic] = useState('writer');
+      const [length, setLength] = useState('middle');
+      const [text, setText] = useState(PRESETS.writer.middle);
+      const [speed, setSpeed] = useState(15); 
+      const [themeKey, setThemeKey] = useState('ocean');
+      const [musicEnabled, setMusicEnabled] = useState(true);
+      
+      const audioRef = useRef(null);
+      const [audioBlocked, setAudioBlocked] = useState(false);
+      const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+      const [activeSentences, setActiveSentences] = useState([]);
+
+      const handlePresetChange = (newTopic, newLength) => {
+        setTopic(newTopic);
+        setLength(newLength);
+        setText(PRESETS[newTopic][newLength]);
+      };
+
+      const getSentences = (rawText) => {
+        return rawText.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+      };
+
+      const attemptPlayAudio = () => {
+        if (audioRef.current && musicEnabled) {
+          audioRef.current.volume = 0.4;
+          const playPromise = audioRef.current.play();
+          
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setAudioBlocked(false);
+                setIsPlayingAudio(true);
+              })
+              .catch((error) => {
+                console.log("Audio blocked by browser:", error);
+                setAudioBlocked(true);
+                setIsPlayingAudio(false);
+              });
+          }
+        }
+      };
+
+      const toggleAudio = () => {
+        if (audioRef.current) {
+          if (isPlayingAudio) {
+            audioRef.current.pause();
+            setIsPlayingAudio(false);
+          } else {
+            attemptPlayAudio();
+          }
+        }
+      };
+
+      useEffect(() => {
+        if (mode === 'play') {
+          attemptPlayAudio();
+
+          const sentences = getSentences(text);
+          if (sentences.length === 0) return;
+
+          let currentIndex = 0;
+          
+          const spawnSentence = () => {
+            const id = Date.now() + Math.random();
+            const sentenceText = sentences[currentIndex];
+            
+            setActiveSentences(prev => [...prev, { id, text: sentenceText }]);
+            
+            setTimeout(() => {
+              setActiveSentences(prev => prev.filter(node => node.id !== id));
+            }, speed * 1000);
+
+            currentIndex = (currentIndex + 1) % sentences.length;
+          };
+
+          spawnSentence();
+          const spawnInterval = (speed * 1000) / 3.5; 
+          const interval = setInterval(spawnSentence, spawnInterval);
+
+          return () => {
+            clearInterval(interval);
+            if (audioRef.current) {
+              audioRef.current.pause();
+              setIsPlayingAudio(false);
+            }
+          };
+        } else {
+          setActiveSentences([]);
+          if (audioRef.current) {
+            audioRef.current.pause();
+            setIsPlayingAudio(false);
+          }
+          setAudioBlocked(false);
+        }
+      }, [mode, text, speed, themeKey, musicEnabled]);
+
+      const activeTheme = THEMES[themeKey];
+      const audioSrc = AUDIO_TRACKS[activeTheme.audio];
+
+      if (mode === 'play') {
+        return (
+          <div className={`relative w-full h-screen overflow-hidden ${activeTheme.bg} ${activeTheme.font} transition-colors duration-1000`}>
+            <audio ref={audioRef} src={audioSrc} loop playsInline />
+            <style>{`
+              @keyframes floatUpSmooth {
+                0% { transform: translateY(110vh) scale(0.9); opacity: 0; }
+                20% { opacity: 1; transform: translateY(75vh) scale(1); }
+                80% { opacity: 1; transform: translateY(25vh) scale(1); }
+                100% { transform: translateY(-10vh) scale(0.9); opacity: 0; }
+              }
+              .floating-sentence {
+                animation: floatUpSmooth linear forwards;
+                text-shadow: 0 2px 10px rgba(0,0,0,0.6), 0 4px 20px rgba(0,0,0,0.3);
+              }
+            `}</style>
+
+            <div className="absolute inset-0 flex justify-center w-full pointer-events-none z-0">
+              {activeSentences.map((node) => (
+                <div
+                  key={node.id}
+                  className={`floating-sentence absolute w-11/12 md:w-2/3 text-center text-3xl md:text-5xl font-medium tracking-wide leading-relaxed ${activeTheme.text}`}
+                  style={{ animationDuration: `${speed}s` }}
+                >
+                  {node.text}
+                </div>
+              ))}
+            </div>
+
+            {audioBlocked && musicEnabled && (
+              <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-sm">
+                <button 
+                  onClick={attemptPlayAudio}
+                  className="bg-teal-600 hover:bg-teal-500 text-white px-8 py-4 rounded-full font-bold text-lg shadow-2xl flex items-center gap-3 animate-pulse"
+                >
+                  <IconVolume2 size={24} />
+                  Tap to Enable Ambient Sound
+                </button>
+              </div>
+            )}
+
+            <div className="absolute top-6 right-6 z-30 flex gap-4">
+              <button
+                onClick={toggleAudio}
+                className="flex items-center justify-center bg-black/40 backdrop-blur text-white p-3 rounded-full shadow-lg border border-white/20 hover:bg-black/60 transition-all"
+              >
+                {isPlayingAudio ? <IconVolume2 size={20} /> : <IconVolumeX size={20} />}
+              </button>
+              <button
+                onClick={() => setMode('edit')}
+                className="flex items-center gap-2 bg-black/40 backdrop-blur text-white px-4 py-3 rounded-full shadow-lg border border-white/20 hover:bg-black/60 transition-all"
+              >
+                <IconSettings size={20} />
+                <span className="font-medium hidden sm:inline">Settings</span>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center py-6 px-4 font-sans selection:bg-teal-200 overflow-y-auto">
+          <div className="w-full max-w-md space-y-8 pb-12">
+            
+            <div className="text-center space-y-1">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Affirmation Flow</h1>
+              <p className="text-slate-500 text-sm">Process to Result. Sentence by Sentence.</p>
+            </div>
+
+            <div className="space-y-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 mb-2">
+                <IconAlignLeft size={16} className="text-teal-600" /> 1. Select Topic & Length
+              </label>
+              
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(PRESETS).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => handlePresetChange(key, length)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      topic === key 
+                        ? 'bg-teal-600 text-white shadow-md' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {PRESETS[key].label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                {['short', 'middle', 'long'].map((len) => (
+                  <button
+                    key={len}
+                    onClick={() => handlePresetChange(topic, len)}
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                      length === len 
+                        ? 'bg-slate-800 text-white' 
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {len}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 px-1">
+                <IconEdit3 size={16} className="text-teal-600" /> 2. Edit Text (Optional)
+              </label>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full h-40 p-4 rounded-3xl border-2 border-slate-200 focus:border-teal-500 focus:ring-0 resize-none text-base leading-relaxed text-slate-700 bg-white shadow-sm transition-colors"
+                placeholder="Type your affirmations here. Separate sentences with periods."
+              />
+            </div>
+
+            <div className="space-y-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <IconPalette size={16} className="text-teal-600" /> 3. Theme & Ambient Sound
+              </label>
+              
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(THEMES).map(([key, t]) => (
+                  <button
+                    key={key}
+                    onClick={() => setThemeKey(key)}
+                    className={`p-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center border-2 ${
+                      themeKey === key ? 'border-teal-500 scale-95 shadow-inner' : 'border-transparent hover:border-slate-200'
+                    } ${t.bg} ${t.text.split(' ')[0]} ${t.font}`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                  <IconMusic size={16} /> Enable Sound
+                </span>
+                <button 
+                  onClick={() => setMusicEnabled(!musicEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${musicEnabled ? 'bg-teal-600' : 'bg-slate-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${musicEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+               <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <IconSliders size={16} className="text-teal-600"/> 4. Fine Flow Speed
+              </label>
+              
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-bold text-slate-400 w-10 text-right">Slow</span>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="40" 
+                  step="1"
+                  value={speed} 
+                  onChange={(e) => setSpeed(Number(e.target.value))}
+                  className="flex-1 accent-teal-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                  dir="rtl" 
+                />
+                <span className="text-xs font-bold text-slate-400 w-10">Fast</span>
+              </div>
+              <div className="text-center text-xs font-medium text-teal-600">
+                {speed} seconds per sentence
+              </div>
+            </div>
+
+            <div className="pt-2 sticky bottom-6">
+              <button
+                onClick={() => setMode('play')}
+                disabled={!text.trim()}
+                className="w-full flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-4 rounded-3xl text-xl font-bold shadow-xl shadow-slate-900/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <IconPlay fill="currentColor" size={24} />
+                Start Flow
+              </button>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
