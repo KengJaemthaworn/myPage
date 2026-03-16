@@ -3,7 +3,7 @@
 Date: March 16, 2026
 Tags: Note
 
-![648505133_1412280687579940_5500399709328424359_n-2.jpg](Healthy%20dev%20with%20AI/648505133_1412280687579940_5500399709328424359_n-2.jpg)
+![healthydevwithAI.jpg](livingNet/healthydevwithAI.jpg)
 
 จาก Vibe Coder → Normal Developer → Healthy Developer นี่คือวิวัฒนาการที่สาย Tech ควรไปให้ถึง
 
