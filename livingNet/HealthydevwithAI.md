@@ -3,7 +3,7 @@
 Date: March 16, 2026
 Tags: Note
 
-![https://github.com/KengJaemthaworn/myPage/blob/main/livingNet/healthydevwithAI.jpg](https://github.com/KengJaemthaworn/myPage/blob/main/livingNet/healthydevwithAI.jpg?raw=true)
+![healthydevwithAI.jpg](https://raw.githubusercontent.com/KengJaemthaworn/myPage/main/livingNet/healthydevwithAI.jpg)
 
 จาก Vibe Coder → Normal Developer → Healthy Developer นี่คือวิวัฒนาการที่สาย Tech ควรไปให้ถึง
 
